@@ -73,6 +73,7 @@ export interface Sim {
   finStep: number; // progress through the Deletion input
   finHeld: number;
   deleted: boolean;
+  lastBreath: boolean; // this round ended on the winner's Last Breath
   f: [Fighter, Fighter];
 }
 
@@ -88,7 +89,7 @@ function makeFighter(id: FighterId, x: number, facing: 1 | -1): Fighter {
 
 export function createSim(p1: FighterId, p2: FighterId): Sim {
   return {
-    tick: 0, phase: 'intro', phaseFrame: 0, round: 1, timer: ROUND_TIME, wins: [0, 0], roundWinner: -1, hitstop: 0, finStep: 0, finHeld: 0, deleted: false,
+    tick: 0, phase: 'intro', phaseFrame: 0, round: 1, timer: ROUND_TIME, wins: [0, 0], roundWinner: -1, hitstop: 0, finStep: 0, finHeld: 0, deleted: false, lastBreath: false,
     f: [makeFighter(p1, 440, 1), makeFighter(p2, 840, -1)],
   };
 }
@@ -275,6 +276,8 @@ function checkHit(s: Sim, i: number, m: MoveData, ev: SimEvent[]) {
     if (d.vy === 0) d.vy = 9;
     s.hitstop = 24;
     ev.push({ type: 'ko', who: i, x: ex, y: ey, pow: 2 });
+    // a K.O. with your special in a non-final round triggers your Last Breath
+    s.lastBreath = m === MOVES[FIGHTERS[a.id].special] && s.wins[i] === 0;
     endRound(s, i);
   }
 }
@@ -389,6 +392,7 @@ function nextRound(s: Sim) {
   s.f = [makeFighter(s.f[0].id, 440, 1), makeFighter(s.f[1].id, 840, -1)];
   s.timer = ROUND_TIME;
   s.roundWinner = -1;
+  s.lastBreath = false;
   s.phase = 'intro';
   s.phaseFrame = 0;
 }

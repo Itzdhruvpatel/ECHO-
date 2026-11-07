@@ -26,15 +26,19 @@ Open http://localhost:5173. Keyboard works best; a PC or laptop is recommended.
 | H | Hitbox view with live frame data |
 | M | Mute |
 
-After a K.O. win, the screen says DELETE THEM. Enter down, down, special for your fighter's Deletion.
+Finish round 1 or 2 with your special and you get your fighter's Last Breath. After a match-winning K.O. the screen says DELETE THEM: enter down, down, special for your Deletion.
+
+## The Spire
+
+Arcade Tower takes you up five floors: 12, 37, 61, 88 and 99. Each CPU reacts faster and blocks more than the last. Floor 61 sits in the flooded temple and holds a story twist. Your Echo waits on floor 99, and beating it leads to the Archive and a choice between two endings.
 
 ## Fighters
 
-| Fighter | Weapon | Super power | Overclock |
-| --- | --- | --- | --- |
-| Kaal | Urumi whip sword | Rewind: jump back one second and recover the health lost in it | Thousand Coils |
-| Vanta | Twin kukris | Shadow Phase: reappear behind the opponent | Night Shift |
-| Rook | Hydraulic hammer | Iron Will: three seconds of armor that turns damage into meter | Demolition Order |
+| Fighter | Weapon | Super power | Overclock | Last Breath | Deletion |
+| --- | --- | --- | --- | --- | --- |
+| Kaal | Urumi whip sword | Rewind: jump back one second and recover the health lost in it | Thousand Coils | Monsoon Cut | Kaal's Loop |
+| Vanta | Twin kukris | Shadow Phase: reappear behind the opponent | Night Shift | Cross Out | Faceless |
+| Rook | Hydraulic hammer | Iron Will: three seconds of armor that turns damage into meter | Demolition Order | Pile Driver | Foundation |
 
 Every fighter also has two strings, a special and a Deletion. The fighter select screen lists the inputs.
 

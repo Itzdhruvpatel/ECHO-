@@ -270,7 +270,7 @@ export function sparks(cx, cy, dt, seed, col, n = 26, power = 1) {
 }
 
 // ---------- stage: drowned Mumbai rooftop ----------
-function skyline(base, col, seed, scale, win) {
+export function skyline(base, col, seed, scale, win) {
   const r = rng(seed); let xx = -40;
   x.fillStyle = col;
   while (xx < W + 40) {
@@ -343,4 +343,19 @@ export function button(cx, cy, w, h, label, fill, hover, press, t) {
   if (hover && fill) { const sw = ((t * 1.6) % 1.4) - .2; x.save(); x.beginPath(); x.roundRect(-w / 2, -h / 2, w, h, 4); x.clip(); x.fillStyle = 'rgba(255,255,255,.25)'; x.beginPath(); x.moveTo(-w / 2 + sw * w, -h / 2); x.lineTo(-w / 2 + sw * w + 30, -h / 2); x.lineTo(-w / 2 + sw * w, h / 2); x.lineTo(-w / 2 + sw * w - 30, h / 2); x.fill(); x.restore(); }
   x.restore();
   text(label, cx, cy + 1, 19, '#fff', HEAVY, '900', 'center', 1, 3);
+}
+
+// ---------- stage 2: the flooded temple on floor 61 ----------
+const templeLayer = cached(() => {
+  const g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#04070a'); g.addColorStop(1, '#0a1418'); x.fillStyle = g; x.fillRect(0, 0, W, H);
+  for (let i = 0; i < 7; i++) { const px = 80 + i * 190; x.fillStyle = '#0b1116'; x.fillRect(px, 80, 60, 520); x.fillStyle = 'rgba(41,240,255,.05)'; x.fillRect(px, 80, 4, 520); }
+  const lg = x.createLinearGradient(640, 0, 640, 600); lg.addColorStop(0, 'rgba(255,200,140,.18)'); lg.addColorStop(1, 'rgba(255,200,140,0)');
+  x.fillStyle = lg; x.beginPath(); x.moveTo(560, 0); x.lineTo(720, 0); x.lineTo(860, 600); x.lineTo(420, 600); x.fill();
+});
+export function temple(t) {
+  templeLayer();
+  x.fillStyle = 'rgba(8,30,40,.85)'; x.fillRect(0, 590, W, H);
+  x.strokeStyle = 'rgba(41,240,255,.15)';
+  for (let i = 0; i < 8; i++) { x.beginPath(); const y = 596 + i * 16; x.moveTo(0, y); for (let xx = 0; xx <= W; xx += 30) x.lineTo(xx, y + Math.sin(xx * .02 + t * 1.2 + i) * 3); x.stroke(); }
+  glow('#29f0ff', 12); x.fillStyle = 'rgba(41,240,255,.6)'; x.fillRect(0, 580, W, 2); x.shadowBlur = 0;
 }

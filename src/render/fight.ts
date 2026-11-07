@@ -102,6 +102,9 @@ export interface FightView {
   panel?: { top: [string, number][]; acc: number; loss: number[] };
   callout?: string;
   rec?: boolean;
+  temple?: boolean; // floor 61 stage
+  floor?: number;
+  overHint?: string;
 }
 let view: FightView = {};
 
@@ -235,6 +238,61 @@ function shards(cx: number, cy: number, dt: number) {
   x.fillStyle = 'rgba(41,240,255,.5)'; x.font = `bold 13px ${A.MONO}`;
   for (let i = 0; i < 30; i++) { const r2 = A.rng(i + 500), yy = GY - ((dt * 500 + r2() * 600) % GY); x.globalAlpha = 0.6 * A.seg(dt, 0.2, 0.6); x.fillText(r2() > 0.5 ? '1' : '0', cx - 40 + r2() * 80, yy); }
   x.restore();
+}
+
+// ---------- Last Breath: the round 1 and 2 finisher ----------
+const LB_FRAMES = 170;
+
+function lastBreathScene(s: Sim, t: number) {
+  const wi = s.roundWinner, w = { id: s.f[wi].id, x: 520, facing: 1 as 1 | -1 }, l = { facing: -1 as const };
+  const ws = skin(s, wi), ls = skin(s, 1 - wi), P = A.POSE, x = A.x;
+  const dt = s.phaseFrame / 60;
+  let lx = 800, ly = 0, lp: object = P.hit, wp: object = P.idle, whip = 0, ghost = 1;
+  if (w.id === 'kaal') {
+    // the whip wraps them, swings them overhead and slams them down three times
+    const k = Math.max(0, dt - 0.3), n = Math.floor(k / 0.7), p = (k % 0.7) / 0.7;
+    if (dt < 0.3) { wp = A.mixPose(P.idle, P.whip, dt / 0.3); whip = 1; }
+    else if (n < 3) {
+      const from = n % 2 ? 380 : 800, to = n % 2 ? 800 : 380;
+      lx = A.lerp(from, to, A.ease(p)); ly = Math.sin(p * Math.PI) * 260; wp = P.raise; whip = 0;
+      if (p > 0.92) { shake = Math.max(shake, 18); A.sparks(lx, GY - 20, (p - 0.92) * 2, n * 7 + 3, '#ffb15a', 26, 1.3); }
+      x.save(); A.glow('#ff8a1f', 14); x.strokeStyle = 'rgba(255,200,140,.85)'; x.lineWidth = 3;
+      x.beginPath(); x.moveTo(w.x + 20, GY - 250); x.quadraticCurveTo((w.x + lx) / 2, GY - 330 - ly * 0.3, lx, GY - 120 - ly); x.stroke(); x.restore();
+    } else { lx = 380; lp = P.stag; ghost = 0; }
+  } else if (w.id === 'vanta') {
+    // an X slash across the chest, then she reappears behind for a spinning finish
+    lx = 640;
+    if (dt < 0.7) {
+      wp = dt < 0.35 ? P.punch : P.whip; w.x = 540;
+      const a = A.clamp((dt - 0.1) / 0.4);
+      x.save(); x.globalCompositeOperation = 'lighter'; A.glow('#a45cff', 20); x.strokeStyle = '#f2e9ff'; x.lineWidth = 5;
+      x.beginPath(); x.moveTo(lx - 70, GY - 230); x.lineTo(lx - 70 + 140 * a, GY - 230 + 160 * a); x.stroke();
+      if (dt > 0.3) { const b = A.clamp((dt - 0.3) / 0.3); x.beginPath(); x.moveTo(lx + 70, GY - 230); x.lineTo(lx + 70 - 140 * b, GY - 230 + 160 * b); x.stroke(); }
+      x.restore();
+    } else if (dt < 1.1) { ghost = 1; w.x = -999; puff(540, GY - 110, dt - 0.7); puff(780, GY - 110, dt - 0.95); }
+    else {
+      w.x = 780; w.facing = -1; wp = P.spin;
+      const k = A.clamp((dt - 1.3) / 0.8);
+      if (dt > 1.3) { lx = A.lerp(640, 380, A.eOut(k)); ly = Math.sin(k * Math.PI) * 120; lp = k > 0.9 ? P.stag : P.hit; }
+      if (dt > 1.3 && dt < 1.45) { shake = Math.max(shake, 16); A.sparks(700, GY - 140, dt - 1.3, 41, '#a45cff', 30, 1.4); }
+    }
+  } else {
+    // buried to the knees, then launched into the wall
+    if (dt < 0.5) { wp = A.mixPose(P.idle, P.raise, dt / 0.5); lx = 680; }
+    else if (dt < 1.3) { wp = P.whip; lx = 680; ly = -70 * A.clamp((dt - 0.5) / 0.08); if (dt < 0.6) shake = Math.max(shake, 22); lp = P.stag; }
+    else if (dt < 1.6) { wp = P.raise; lx = 680; ly = -70; lp = P.stag; }
+    else {
+      wp = P.upper; const k = A.clamp((dt - 1.6) / 0.5);
+      lx = A.lerp(680, 1150, A.eOut(k)); ly = Math.sin(k * Math.PI * 0.8) * 220;
+      if (k >= 1 && dt < 2.25) { shake = Math.max(shake, 20); A.sparks(1150, GY - 140, dt - 2.1, 77, '#ff4d2e', 34, 1.6); }
+      lp = P.hit;
+    }
+  }
+  x.save();
+  if (ly < 0) { x.beginPath(); x.rect(0, 0, W, GY + 2); x.clip(); }
+  if (ghost) A.drawFighter({ x: lx, y: GY - Math.min(0, ly), air: Math.max(0, ly), f: l.facing, s: SCALE, p: lp, ...ls }, t);
+  x.restore();
+  if (w.x > -100) A.drawFighter({ x: w.x, y: GY, f: w.facing, s: SCALE, p: wp, whip, ...ws }, t);
 }
 
 const BREAK = 1.6; // seconds into the Deletion when the loser shatters
@@ -376,6 +434,10 @@ function banners(s: Sim, t: number) {
       A.text('WASD MOVE   U I J K ATTACK   U+J THROW   O SPECIAL   L / SPACE BLOCK', W / 2, 420, 14, '#bfe9ff', A.MONO, 'bold', 'center', 1, 2);
       A.text('P SUPER POWER (1 BAR)   ;  OVERCLOCK (3 BARS)   H HITBOXES   ESC MENU', W / 2, 446, 14, '#ffb15a', A.MONO, 'bold', 'center', 1, 2);
     }
+  } else if (s.phase === 'outro' && s.lastBreath && f < LB_FRAMES) {
+    const name = FIGHTERS[s.f[s.roundWinner].id].lastBreath, a = Math.min(1, f / 12);
+    A.glitchText('LAST BREATH', W / 2, 110, 26, t, '#ffffff', '900', A.MONO, 0.3);
+    A.glitchText(name, W / 2, 160, 60 * A.lerp(1.4, 1, A.eOut(a)), t, FIGHTERS[s.f[s.roundWinner].id].color, '900', A.HEAVY, 0.5);
   } else if (s.phase === 'outro') {
     const ko = s.f.some(q => q.hp <= 0);
     A.glitchText(ko ? 'K.O.' : 'TIME', W / 2, 300, 170 * A.lerp(1.8, 1, A.eOut(Math.min(1, f / 12))), t, '#ff2a44', '900', A.HEAVY, 0.7);
@@ -391,7 +453,7 @@ function banners(s: Sim, t: number) {
     A.x.fillStyle = 'rgba(0,0,0,.55)'; A.x.fillRect(0, 0, W, H);
     const won = s.wins[0] > s.wins[1];
     A.glitchText(won ? 'YOU WIN' : 'YOU LOSE', W / 2, 290, 130, t, won ? '#ffffff' : '#ff2a44', '900', A.HEAVY, 0.6);
-    A.text('ENTER  REMATCH     //     ESC  FIGHTER SELECT', W / 2, 400, 18, '#29f0ff', A.MONO, 'bold', 'center', 1, 4);
+    A.text(view.overHint ?? 'ENTER  REMATCH     //     ESC  FIGHTER SELECT', W / 2, 400, 18, '#29f0ff', A.MONO, 'bold', 'center', 1, 4);
   }
 }
 
@@ -401,9 +463,10 @@ export function drawFight(s: Sim, t: number, v: FightView = {}) {
   shake *= 0.86;
   x.save();
   x.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
-  A.stage(t);
-  A.rain(t, 200, 0.2);
+  if (v.temple) { A.temple(t); A.rain(t, 100, 0.1, 0.1); } else { A.stage(t); A.rain(t, 200, 0.2); }
+  if (v.floor) A.text(`FLOOR ${v.floor}`, W / 2, 112, 13, '#7d8590', A.MONO, 'bold', 'center', 1, 5);
   if (s.phase === 'deletion') deletionScene(s, t);
+  else if (s.phase === 'outro' && s.lastBreath && s.phaseFrame < LB_FRAMES) lastBreathScene(s, t);
   else {
     powerFx(s, t);
     const order = s.f[0].state === 'attack' ? [1, 0] : [0, 1]; // attacker drawn on top

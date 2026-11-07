@@ -66,6 +66,7 @@ export interface FighterData {
   special: string;
   overclock: string;
   deletion: string;
+  lastBreath: string; // finisher for rounds 1 and 2: K.O. with your special
   weapon: string;
   color: string;
   weaponName: string;
@@ -77,17 +78,17 @@ export interface FighterData {
 
 export const FIGHTERS: Record<FighterId, FighterData> = {
   kaal: {
-    name: 'KAAL', hp: 1000, walk: 4.2, dash: 12, special: 'coil', overclock: 'oc_coils', deletion: "KAAL'S LOOP", weapon: 'urumi', color: '#ff8a1f', weaponName: 'URUMI WHIP SWORD', power: 'REWIND', style: 'BALANCED, LONG REACH',
+    name: 'KAAL', hp: 1000, walk: 4.2, dash: 12, special: 'coil', overclock: 'oc_coils', deletion: "KAAL'S LOOP", lastBreath: 'MONSOON CUT', weapon: 'urumi', color: '#ff8a1f', weaponName: 'URUMI WHIP SWORD', power: 'REWIND', style: 'BALANCED, LONG REACH',
     chains: { fp: { FP: 'fp2' }, fp2: { BP: 'k_monsoon' }, fk: { BK: 'k_undertow' } },
     moveList: 'U U I  RIPTIDE  //  J K  UNDERTOW  //  O  COIL LASH  //  P  REWIND  //  ;  THOUSAND COILS',
   },
   vanta: {
-    name: 'VANTA', hp: 900, walk: 5.4, dash: 15, special: 'lunge', overclock: 'oc_nightshift', deletion: 'FACELESS', weapon: 'kukri', color: '#a45cff', weaponName: 'TWIN KUKRIS', power: 'SHADOW PHASE', style: 'RUSHDOWN',
+    name: 'VANTA', hp: 900, walk: 5.4, dash: 15, special: 'lunge', overclock: 'oc_nightshift', deletion: 'FACELESS', lastBreath: 'CROSS OUT', weapon: 'kukri', color: '#a45cff', weaponName: 'TWIN KUKRIS', power: 'SHADOW PHASE', style: 'RUSHDOWN',
     chains: { fp: { BP: 'bp' }, bp: { FK: 'v_flurry', BP: 'v_nightcut' } },
     moveList: 'U I J  SHADE FLURRY  //  I I  NIGHT CUT  //  O  SHADOW LUNGE  //  P  SHADOW PHASE  //  ;  NIGHT SHIFT',
   },
   rook: {
-    name: 'ROOK', hp: 1150, walk: 3.3, dash: 9, special: 'slam', overclock: 'oc_demolition', deletion: 'FOUNDATION', weapon: 'hammer', color: '#ff4d2e', weaponName: 'HYDRAULIC HAMMER', power: 'IRON WILL', style: 'HEAVY GRAPPLER',
+    name: 'ROOK', hp: 1150, walk: 3.3, dash: 9, special: 'slam', overclock: 'oc_demolition', deletion: 'FOUNDATION', lastBreath: 'PILE DRIVER', weapon: 'hammer', color: '#ff4d2e', weaponName: 'HYDRAULIC HAMMER', power: 'IRON WILL', style: 'HEAVY GRAPPLER',
     chains: { bp: { FP: 'r_piledriver' }, fk: { FK: 'r_breakwater' } },
     moveList: 'I U  WRECKING BALL  //  J J  BREAKWATER  //  O  GROUND BREAKER  //  P  IRON WILL  //  ;  DEMOLITION ORDER',
   },

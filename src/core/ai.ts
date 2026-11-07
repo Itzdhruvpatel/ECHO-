@@ -11,11 +11,12 @@ export interface Cpu {
   out: number;
   follow: number[]; // string follow-up presses chosen by the last decision
   busyUntil: number;
+  skill: number; // 0 (sloppy) to 1 (sharp): scales blocking and how often it hesitates
 }
 
-// One difficulty for now (about 0.25 s reactions). Easy and Hard will change delay and the block rates below.
-export function makeCpu(seed: number, delay = 15): Cpu {
-  return { seed: seed >>> 0 || 1, delay, queue: [], out: 0, follow: [], busyUntil: 0 };
+// delay is the reaction time in ticks: about 24 (0.4 s) is easy, 9 (0.15 s) is hard.
+export function makeCpu(seed: number, delay = 15, skill = 0.5): Cpu {
+  return { seed: seed >>> 0 || 1, delay, queue: [], out: 0, follow: [], busyUntil: 0, skill };
 }
 
 function rand(c: Cpu): number {
@@ -49,10 +50,11 @@ function decide(s: Sim, i: number, c: Cpu): number {
     if (me.id === 'vanta' && dist > 200) return B.POWER;
     if (me.id === 'rook' && dist < 260) return B.POWER;
   }
-  if (op.state === 'attack' && op.move && dist < 360 && r < P.block) return B.BLOCK | (MOVES[op.move].level === 'low' ? B.DOWN : 0);
-  if (dist < 150 && r < 0.12) return B.BLOCK;
-  if (r < 0.17) return 0; // hesitate
-  if (r < 0.21) return B.UP | (rand(c) < 0.6 ? fwd : 0);
+  const sk = 0.5 + c.skill; // 0.5 to 1.5
+  if (op.state === 'attack' && op.move && dist < 360 && r < P.block * sk) return B.BLOCK | (MOVES[op.move].level === 'low' ? B.DOWN : 0);
+  if (dist < 150 && r < 0.12 * sk) return B.BLOCK;
+  if (r < 0.17 * (2 - sk)) return 0; // hesitate
+  if (r < 0.21 * (2 - sk) + 0.04) return B.UP | (rand(c) < 0.6 ? fwd : 0);
 
   const opts = P.attacks.filter(([k]) => {
     const m = MOVES[k === 'special' ? FIGHTERS[me.id].special : k];

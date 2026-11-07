@@ -52,6 +52,16 @@ function power(p1: FighterId, button: number) {
   console.log('ok  super powers and Overclock supers');
 }
 
+// A round 1 K.O. with the special is a Last Breath; with a normal it is not.
+for (const [press, want] of [[B.SPECIAL, true], [B.BP, false]] as [number, boolean][]) {
+  const s = fightReady('rook', 'kaal');
+  s.f[1].hp = 20;
+  for (let t = 0; t < 80; t++) step(s, [t < 2 ? press : 0, 0]);
+  assert.equal(s.phase, 'outro', 'round did not end');
+  assert.equal(s.lastBreath, want, `Last Breath should be ${want}`);
+}
+console.log('ok  Last Breath only on a special K.O.');
+
 for (const [p1, keys, hits] of [['kaal', 'U U I', 3], ['kaal', 'J K', 2], ['vanta', 'U I J', 3], ['vanta', 'I I', 2], ['rook', 'I U', 2], ['rook', 'J J', 2]] as [FighterId, string, number][]) {
   const got = play(p1, keys);
   assert.equal(got, hits, `${p1} ${keys}: expected ${hits} hit combo, got ${got}`);

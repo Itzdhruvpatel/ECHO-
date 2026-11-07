@@ -8,7 +8,7 @@ export type Hot = (x: number, y: number, w: number, h: number, onClick: () => vo
 const { W, H } = A;
 
 export const MENU = [
-  { id: 'arcade', name: 'ARCADE TOWER', desc: 'Best of 3 against the CPU. Every fight teaches your Echo.' },
+  { id: 'arcade', name: 'ARCADE TOWER', desc: 'Climb the Spire to floor 99. Every fight teaches your Echo.' },
   { id: 'echo', name: 'FIGHT YOUR ECHO', desc: 'Floor 99. A neural network trained on how you fight.' },
   { id: 'lab', name: 'ECHO LAB', desc: 'Your Habit Report and the Echo\'s training.' },
   { id: 'versus', name: 'VERSUS', desc: 'Two players, one keyboard or two gamepads.' },
@@ -147,7 +147,7 @@ export function drawLab(t: number, e: EchoInfo, hot: Hot, fight: () => void) {
 }
 
 // Floor 99: the split screen face-off before the Echo fight, with the player's real habits.
-export function drawSummit(t: number, id: string, lines: string[], hot: Hot, go: () => void) {
+export function drawSummit(t: number, id: string, lines: string[], note: string | null, hot: Hot, go: () => void) {
   const x = A.x, F = FIGHTERS[id as keyof typeof FIGHTERS];
   x.fillStyle = '#000'; x.fillRect(0, 0, W, H);
   hot(0, 0, W, H, go);
@@ -170,7 +170,8 @@ export function drawSummit(t: number, id: string, lines: string[], hot: Hot, go:
     if (t > a) A.text(s.slice(0, Math.floor(A.seg(t, a, a + 0.35) * s.length)), 1220, 190 + i * 34, 17, i === 3 ? '#fff' : '#9df6ff', A.MONO, 'bold', 'right', 1, 1);
   });
   if (t > 3.2) A.glitchText('"I AM THE ORIGINAL."', 1220, 345, 30, t, '#ffffff', '900', A.HEAVY, 0.4, 'right');
-  if (t > 3.6) A.text('PRESS ENTER', W / 2, 690, 12, '#8a949d', A.MONO, 'bold', 'center', Math.floor(t * 2) % 2 ? 1 : 0.4, 4);
+  if (note) A.text(note, W / 2, 690, 13, '#29f0ff', A.MONO, 'bold', 'center', 1, 4);
+  else if (t > 3.6) A.text('PRESS ENTER', W / 2, 690, 12, '#8a949d', A.MONO, 'bold', 'center', Math.floor(t * 2) % 2 ? 1 : 0.4, 4);
   A.post(t, A.seg(t, 0, 0.2));
 }
 
