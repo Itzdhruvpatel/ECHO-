@@ -14,6 +14,7 @@ import { ROSTER, type FighterId } from './core/data.ts';
 import { Recorder } from './echo/recorder.ts';
 import { EchoBrain, MIN_MATCHES, record, refresh, resetEcho, status } from './echo/echo.ts';
 import { habits, type Habits } from './echo/habits.ts';
+import { Taunter } from './echo/taunts.ts';
 import type { MatchRecord } from './echo/store.ts';
 import * as input from './input.ts';
 import { Trainer, drawTrainer, type DummyMode } from './tutorial.ts';
@@ -62,6 +63,7 @@ let screenNow: Screen = 'landing', screenT0 = 0, now = 0;
 let menuSel = 0, selIdx = 0, setSel = 0, confirmReset = false, debug = false, pressStart = false, choice = 0;
 let mode: 'tower' | 'echo' | 'versus' = 'tower';
 let selFor: 'p1' | 'p2' | 'train' | 'practice' = 'p1';
+let taunter: Taunter | null = null;
 let sim: Sim | null = null, cpu: Cpu | null = null, brain: EchoBrain | null = null, rec: Recorder | null = null, trainer: Trainer | null = null;
 let player: FighterId = 'kaal', player2: FighterId = 'rook', acc = 0, saved = false, towerAfterTutorial = false;
 
@@ -106,6 +108,7 @@ function startFight() {
   sim = createSim(player, opp);
   cpu = makeCpu(seed, f?.delay ?? 15, f?.skill ?? 0.5);
   brain = echo ? new EchoBrain(seed) : null;
+  taunter = echo ? new Taunter(hab) : null;
   rec = mode === 'versus' ? null : new Recorder();
   saved = false;
   acc = 0;
@@ -327,6 +330,8 @@ function fightTick(s: Sim) {
   const ev = step(s, [p1, p2]);
   fxEvents(ev, s, now);
   sounds(s, ev, phase);
+  const line = taunter?.update(s, ev, p1, now);
+  if (line) say(line.toLowerCase(), true);
   if (s.phase === 'over') saveFight(s);
 }
 
@@ -382,6 +387,7 @@ function frame(ms: number) {
         echoSide: brain ? 1 : undefined,
         panel: brain ? { top: brain.top(5), acc: status.info?.valAcc ?? 0, loss: status.info?.loss ?? [] } : undefined,
         callout: brain ? hab?.callout : undefined,
+        taunt: taunter?.line ? { text: taunter.line, age: now - taunter.at } : undefined,
       });
       if (sim.phase !== 'over') touchExtras();
       break;

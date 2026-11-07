@@ -52,15 +52,17 @@ function tone(type: OscillatorType, from: number, to: number, peak: number, deca
   o.start(); o.stop(t + decay + 0.05);
 }
 
-// The announcer: the browser's own speech voice, low and slow.
-export function say(text: string) {
+// The announcer (low and slow) and the Echo (higher, quicker), both with the browser's speech voice.
+// The announcer interrupts; the Echo waits its turn and stays quiet while the announcer talks.
+export function say(text: string, echo = false) {
   if (muted || !('speechSynthesis' in window)) return;
+  if (echo && speechSynthesis.speaking) return;
   const u = new SpeechSynthesisUtterance(text);
-  u.rate = 0.9; u.pitch = 0.5; u.volume = 1;
-  const v = speechSynthesis.getVoices().find(v => /en(-|_)(GB|US)/i.test(v.lang) && /male|david|daniel|george|guy/i.test(v.name))
-    ?? speechSynthesis.getVoices().find(v => v.lang.startsWith('en'));
+  u.rate = echo ? 1.1 : 0.9; u.pitch = echo ? 1.5 : 0.5; u.volume = 1;
+  const voices = speechSynthesis.getVoices();
+  const v = voices.find(v => /en(-|_)(GB|US)/i.test(v.lang) && /male|david|daniel|george|guy/i.test(v.name)) ?? voices.find(v => v.lang.startsWith('en'));
   if (v) u.voice = v;
-  speechSynthesis.cancel();
+  if (!echo) speechSynthesis.cancel();
   speechSynthesis.speak(u);
 }
 

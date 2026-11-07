@@ -15,6 +15,7 @@ export interface Habits {
   callout: string; // the Archive's line during the Echo fight
   dist: [string, number][]; // action share, most used first
   fighter: FighterId;
+  stats: { jumpAfterBlock: number; favAction: number; favName: string; powerHp: number; blocks: number }; // raw numbers, for the Echo's taunts
 }
 
 const pct = (a: number, b: number) => (b ? Math.round((100 * a) / b) : 0);
@@ -53,5 +54,8 @@ export function habits(matches: MatchRecord[]): Habits | null {
   ];
   const n = rows.length;
   const dist = ACTIONS.map((name, a) => [name, rows.filter(r => r.y === a).length / n] as [string, number]).sort((a, b) => b[1] - a[1]);
-  return { lines, callout: `ARCHIVE: YOU BLOCK WHEN ATTACKED ${blocks}% OF THE TIME`, dist, fighter };
+  return {
+    lines, callout: `ARCHIVE: YOU BLOCK WHEN ATTACKED ${blocks}% OF THE TIME`, dist, fighter,
+    stats: { jumpAfterBlock, favAction: atk[0], favName: atkName, powerHp: powers.length ? powerHp : -1, blocks },
+  };
 }

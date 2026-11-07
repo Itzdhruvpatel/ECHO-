@@ -54,6 +54,8 @@ Every fighter also has two strings, a special and a Deletion. The fighter select
 3. After three fights, a Web Worker trains a small network with TensorFlow.js (43 inputs, layers of 128 and 64, 20 outputs) to predict your choice from the situation.
 4. On floor 99 the Echo plays your fighter. It samples an action from the network every 6 ticks, with a reaction delay and some temperature so it stays unpredictable.
 
+The Echo also talks while it fights. It quotes your Habit Report and calls out what you do live: jumping out of block, leaning on your favorite attack, a panic super power, standing still.
+
 The Echo Lab screen shows the training curve, how often the model matches your choices, and a Habit Report built from your data.
 
 ## Code layout

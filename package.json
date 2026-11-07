@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "node src/core/determinism.test.ts && node src/core/strings.test.ts && node src/core/features.test.ts"
+    "test": "node src/core/determinism.test.ts && node src/core/strings.test.ts && node src/core/features.test.ts && node src/echo/taunts.test.ts"
   },
   "devDependencies": {
     "typescript": "^5.8.3",

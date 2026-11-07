@@ -110,6 +110,7 @@ export interface FightView {
   floor?: number;
   overHint?: string;
   names?: [string, string]; // HUD labels, for versus
+  taunt?: { text: string; age: number }; // the Echo's latest line
 }
 let view: FightView = {};
 
@@ -503,8 +504,40 @@ export function drawFight(s: Sim, t: number, v: FightView = {}) {
   if (s.phase !== 'deletion') comboText(t);
   if (s.hitstop > 0) { x.fillStyle = 'rgba(255,255,255,.07)'; x.fillRect(0, 0, W, H); }
   if (flash > 0) { x.fillStyle = `rgba(255,255,255,${flash * 0.6})`; x.fillRect(0, 0, W, H); flash -= 0.04; }
-  if (s.phase !== 'deletion') { hud(s); archiveRec(t); modelPanel(t); callout(s); }
+  if (s.phase !== 'deletion') { hud(s); archiveRec(t); modelPanel(t); callout(s); tauntBubble(s, t); }
   bannerFx(t);
   banners(s, t);
   A.post(t);
+}
+
+// The Echo's speech bubble, above its head.
+const TAUNT_SECONDS = 3;
+function tauntBubble(s: Sim, t: number) {
+  const tb = view.taunt, i = view.echoSide;
+  if (!tb || i === undefined || tb.age > TAUNT_SECONDS) return;
+  const x = A.x, e = s.f[i];
+  x.save();
+  x.font = `bold 17px ${A.COND}`;
+  // wrap into lines of at most 300px
+  const lines: string[] = [];
+  for (const word of tb.text.split(' ')) {
+    const cur = lines.at(-1);
+    if (cur !== undefined && x.measureText(`${cur} ${word}`).width < 300) lines[lines.length - 1] = `${cur} ${word}`;
+    else lines.push(word);
+  }
+  const bw = Math.max(...lines.map(l => x.measureText(l).width)) + 36, bh = 40 + lines.length * 22;
+  const cx = Math.min(W - bw / 2 - 20, Math.max(bw / 2 + 20, e.x)), by = GY - 300 - e.y - bh;
+  const pop = A.eOut(Math.min(1, tb.age / 0.15)), fade = 1 - A.seg(tb.age, TAUNT_SECONDS - 0.4, TAUNT_SECONDS);
+  x.globalAlpha = fade;
+  x.translate(cx, by + bh); x.scale(pop, pop); x.translate(-cx, -(by + bh));
+  x.fillStyle = 'rgba(2,10,16,.9)'; x.strokeStyle = '#29f0ff'; x.lineWidth = 2;
+  A.glow('#29f0ff', 14);
+  x.beginPath(); x.roundRect(cx - bw / 2, by, bw, bh, 6); x.fill(); x.stroke();
+  x.beginPath(); x.moveTo(e.x - 10, by + bh); x.lineTo(e.x, by + bh + 16); x.lineTo(e.x + 10, by + bh); x.fill();
+  x.shadowBlur = 0;
+  x.restore();
+  x.save(); x.globalAlpha = fade;
+  A.text('ECHO', cx - bw / 2 + 14, by + 16, 10, '#29f0ff', A.MONO, 'bold', 'left', 1, 3);
+  lines.forEach((l, k) => A.glitchText(l, cx - bw / 2 + 18, by + 40 + k * 22, 17, t, '#ffffff', 'bold', A.COND, k === 0 && tb.age < 0.3 ? 0.5 : 0.05, 'left'));
+  x.restore();
 }
