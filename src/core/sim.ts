@@ -429,7 +429,8 @@ export function step(s: Sim, inputs: [number, number]): SimEvent[] {
     if (edge & B.DOWN) s.finStep = Math.min(2, s.finStep + 1);
     else if (edge & B.SPECIAL && s.finStep === 2) { s.phase = 'deletion'; s.phaseFrame = 0; s.deleted = true; }
     else if (edge) s.finStep = 0;
-    if (s.phase === 'finish' && s.phaseFrame >= FINISH_FRAMES) { s.phase = 'over'; s.phaseFrame = 0; }
+    // the input just makes it faster: a K.O. win always ends in the winner's Deletion
+    if (s.phase === 'finish' && s.phaseFrame >= FINISH_FRAMES) { s.phase = 'deletion'; s.phaseFrame = 0; s.deleted = true; }
   } else if (s.phase === 'deletion' && s.phaseFrame >= DELETION_FRAMES) {
     s.phase = 'over';
     s.phaseFrame = 0;

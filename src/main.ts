@@ -1,14 +1,14 @@
 // Screens, input, game modes, the Spire run and the fixed 60 tick loop.
 
 import * as A from './render/art.ts';
-import { drawFight, fxEvents, resetFx } from './render/fight.ts';
+import { drawFight, fxEvents, resetFx, timeScale } from './render/fight.ts';
 import {
   drawLab, drawLanding, drawMenu, drawSelect, drawSettings, drawSummit, CARDS, MENU, SETTING_ROWS, menuOn,
   type EchoInfo, type Hot, type Settings,
 } from './render/screens.ts';
 import * as story from './render/story.ts';
 import { createSim, step, type Sim, type SimEvent } from './core/sim.ts';
-import { play, setMuted, toggleMute, unlockAudio } from './audio.ts';
+import { play, say, setMuted, toggleMute, unlockAudio } from './audio.ts';
 import { cpuInput, makeCpu, type Cpu } from './core/ai.ts';
 import { ROSTER, type FighterId } from './core/data.ts';
 import { Recorder } from './echo/recorder.ts';
@@ -301,13 +301,22 @@ function touchExtras() {
 }
 
 // ---------- the loop ----------
+const ROUND_WORDS = ['', 'one', 'two', 'three', 'four', 'five'];
+
 function sounds(s: Sim, ev: SimEvent[], prevPhase: string) {
   for (const e of ev) {
     if (e.type === 'hit') play(e.pow >= 1.4 ? 'heavy' : 'hit', e.pow);
     else play(e.type);
+    if (e.type === 'ko') say(s.lastBreath ? 'Last breath' : 'K. O.');
+    if (e.type === 'super') say('Overclock');
+    if (e.type === 'power') say(e.name!.toLowerCase());
   }
   for (const f of s.f) if (f.state === 'attack' && f.frame === 0) play('whoosh', f.move === 'fp' || f.move === 'fk' ? 0.7 : 1);
-  if (s.phase === 'deletion' && prevPhase !== 'deletion') play('deletion');
+  if (s.phase === 'intro' && s.phaseFrame === 1) say(`Round ${ROUND_WORDS[s.round] ?? s.round}`);
+  if (s.phase === 'intro' && s.phaseFrame === 60) say('Fight!');
+  if (s.phase === 'finish' && prevPhase !== 'finish') say('Delete them');
+  if (s.phase === 'deletion' && prevPhase !== 'deletion') { play('deletion'); say('Deletion'); }
+  if (s.phase === 'over' && prevPhase !== 'over' && screenNow === 'fight') say(s.wins[0] > s.wins[1] ? 'You win' : brain ? 'Your echo wins' : 'You lose');
 }
 
 function fightTick(s: Sim) {
@@ -364,7 +373,7 @@ function frame(ms: number) {
       break;
     case 'fight':
       if (!sim) break;
-      acc += dt;
+      acc += dt * timeScale(now);
       while (acc >= 1 / 60) { acc -= 1 / 60; fightTick(sim); }
       if (sim.phase === 'over') hot(0, 0, A.W, A.H, afterFight);
       drawFight(sim, now, {

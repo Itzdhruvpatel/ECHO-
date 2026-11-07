@@ -62,6 +62,16 @@ for (const [press, want] of [[B.SPECIAL, true], [B.BP, false]] as [number, boole
 }
 console.log('ok  Last Breath only on a special K.O.');
 
+// A player who wins by K.O. and enters nothing still gets their Deletion.
+{
+  const s = fightReady('kaal', 'rook');
+  s.wins[0] = 1;
+  s.f[1].hp = 20;
+  for (let t = 0; t < 1200 && s.phase !== 'over'; t++) step(s, [t < 2 ? B.BP : 0, 0]);
+  assert.ok(s.deleted, 'K.O. win without input should still play the Deletion');
+  console.log('ok  Deletion plays even without the input');
+}
+
 for (const [p1, keys, hits] of [['kaal', 'U U I', 3], ['kaal', 'J K', 2], ['vanta', 'U I J', 3], ['vanta', 'I I', 2], ['rook', 'I U', 2], ['rook', 'J J', 2]] as [FighterId, string, number][]) {
   const got = play(p1, keys);
   assert.equal(got, hits, `${p1} ${keys}: expected ${hits} hit combo, got ${got}`);

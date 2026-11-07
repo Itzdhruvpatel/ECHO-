@@ -4,7 +4,7 @@
 
 import * as A from './art.ts';
 import { FIGHTERS, MOVES } from '../core/data.ts';
-import { DOWN_FRAMES, hitbox, hurtbox, type Fighter, type Sim, type SimEvent } from '../core/sim.ts';
+import { DOWN_FRAMES, FINISH_FRAMES, hitbox, hurtbox, type Fighter, type Sim, type SimEvent } from '../core/sim.ts';
 
 const GY = 640, SCALE = 1.3;
 const W = A.W, H = A.H;
@@ -12,12 +12,16 @@ const W = A.W, H = A.H;
 interface Spark { x: number; y: number; t0: number; col: string; n: number; pow: number; seed: number }
 let sparks: Spark[] = [], shake = 0, flash = 0, seed = 1;
 let combo = { n: 0, who: 0, t: -9 };
+let koCam = { x: 640, y: 400, t: -9 }; // slow-motion zoom on the K.O. hit
+const KO_CAM = 1.4;
+// Game speed for the main loop: a quarter speed for a moment after each K.O.
+export const timeScale = (now: number) => (now - koCam.t < KO_CAM ? 0.25 : 1);
 let power = { who: 0, name: '', t: -9, from: 0, to: 0 };
 let overclock = { who: 0, name: '', t: -9, col: '#ff8a1f' };
 const ghost = [1, 1], fall = [0, 0];
 
 export function resetFx() {
-  sparks = []; shake = 0; flash = 0;
+  sparks = []; shake = 0; flash = 0; koCam = { x: 640, y: 400, t: -9 };
   combo = { n: 0, who: 0, t: -9 };
   power = { who: 0, name: '', t: -9, from: 0, to: 0 };
   overclock = { who: 0, name: '', t: -9, col: '#ff8a1f' };
@@ -31,7 +35,7 @@ export function fxEvents(ev: SimEvent[], s: Sim, t: number) {
     const col = e.type === 'block' ? '#7fd8ff' : FIGHTERS[s.f[e.who].id].color;
     sparks.push({ x: e.x, y: GY - e.y, t0: t, col, n: e.type === 'block' ? 14 : 30, pow: e.pow, seed: seed++ * 31 });
     shake = Math.max(shake, (e.type === 'block' ? 4 : 12) * e.pow);
-    if (e.type === 'ko') flash = 1;
+    if (e.type === 'ko') { flash = 1; koCam = { x: e.x, y: GY - e.y, t }; }
     if ((e.combo ?? 0) >= 2) combo = { n: e.combo!, who: e.who, t };
   }
 }
@@ -449,7 +453,20 @@ function banners(s: Sim, t: number) {
   } else if (s.phase === 'finish') {
     const a = Math.min(1, f / 15), fl = Math.floor(t * 8) % 2;
     A.glitchText('DELETE THEM', W / 2, 250, 120 * A.lerp(1.5, 1, A.eOut(a)), t, fl ? '#ff2a44' : '#ffffff', '900', A.HEAVY, 0.9);
-    if (s.roundWinner === 0) A.text('S  S  O', W / 2, 340, 18, '#7d8590', A.MONO, 'bold', 'center', 1, 8);
+    if (s.roundWinner === 0) {
+      // key chips light up as the input is entered
+      const x = A.x, keys = ['S', 'S', 'O'];
+      keys.forEach((k, i) => {
+        const cx = W / 2 - 90 + i * 90, cy = 370, done = s.finStep > i;
+        x.save(); x.fillStyle = done ? '#ff2a44' : 'rgba(0,0,0,.6)'; x.strokeStyle = done ? '#fff' : '#ff2a44'; x.lineWidth = 3;
+        if (!done && Math.floor(t * 4) % 2) A.glow('#ff2a44', 16);
+        x.fillRect(cx - 32, cy - 32, 64, 64); x.strokeRect(cx - 32, cy - 32, 64, 64); x.restore();
+        A.text(k, cx, cy + 2, 34, '#fff', A.HEAVY, '900');
+      });
+      A.text('DOWN  DOWN  SPECIAL', W / 2, 432, 14, '#ffb15a', A.MONO, 'bold', 'center', 1, 6);
+      A.x.fillStyle = 'rgba(255,42,68,.25)'; A.x.fillRect(W / 2 - 150, 452, 300, 6);
+      A.x.fillStyle = '#ff2a44'; A.x.fillRect(W / 2 - 150, 452, 300 * (1 - f / FINISH_FRAMES), 6);
+    }
   } else if (s.phase === 'over') {
     A.x.fillStyle = 'rgba(0,0,0,.55)'; A.x.fillRect(0, 0, W, H);
     const won = s.wins[0] > s.wins[1];
@@ -464,6 +481,11 @@ export function drawFight(s: Sim, t: number, v: FightView = {}) {
   shake *= 0.86;
   x.save();
   x.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+  const ka = t - koCam.t;
+  if (ka < KO_CAM) {
+    const z = 1 + 0.35 * Math.sin(Math.PI * Math.min(1, ka / KO_CAM));
+    x.translate(koCam.x, koCam.y); x.scale(z, z); x.translate(-koCam.x, -koCam.y);
+  }
   if (v.temple) { A.temple(t); A.rain(t, 100, 0.1, 0.1); } else { A.stage(t); A.rain(t, 200, 0.2); }
   if (v.floor) A.text(`FLOOR ${v.floor}`, W / 2, 112, 13, '#7d8590', A.MONO, 'bold', 'center', 1, 5);
   if (s.phase === 'deletion') deletionScene(s, t);

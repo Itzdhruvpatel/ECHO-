@@ -52,6 +52,18 @@ function tone(type: OscillatorType, from: number, to: number, peak: number, deca
   o.start(); o.stop(t + decay + 0.05);
 }
 
+// The announcer: the browser's own speech voice, low and slow.
+export function say(text: string) {
+  if (muted || !('speechSynthesis' in window)) return;
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 0.9; u.pitch = 0.5; u.volume = 1;
+  const v = speechSynthesis.getVoices().find(v => /en(-|_)(GB|US)/i.test(v.lang) && /male|david|daniel|george|guy/i.test(v.name))
+    ?? speechSynthesis.getVoices().find(v => v.lang.startsWith('en'));
+  if (v) u.voice = v;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(u);
+}
+
 export type Sfx = 'hit' | 'heavy' | 'block' | 'whoosh' | 'throw' | 'ko' | 'power' | 'super' | 'ui' | 'deletion';
 
 export function play(name: Sfx, pow = 1) {
