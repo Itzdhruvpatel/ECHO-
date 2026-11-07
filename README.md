@@ -9,7 +9,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173. Keyboard works best; a PC or laptop is recommended.
+Open http://localhost:5173. Keyboard works best; a PC or laptop is recommended. `npm run build` makes an installable app in `dist/` that also plays offline.
 
 ## Controls
 
@@ -25,6 +25,11 @@ Open http://localhost:5173. Keyboard works best; a PC or laptop is recommended.
 | L or Space | Block (hold S too for low block) |
 | H | Hitbox view with live frame data |
 | M | Mute |
+| F | Fullscreen |
+
+Player 2 in Versus uses the arrow keys and the number pad (7 8 4 5 attacks, 0 block, 9 special, 6 super power, 3 Overclock). Gamepads work for both players: X Y A B attack, RB blocks, RT special, LB super power, LT Overclock. On a phone, turn it sideways and use the on-screen pad.
+
+The first Arcade run starts with a tutorial that walks you through every control. You can replay it from the menu, or use Practice for a dummy that never dies.
 
 Finish round 1 or 2 with your special and you get your fighter's Last Breath. After a match-winning K.O. the screen says DELETE THEM: enter down, down, special for your Deletion.
 

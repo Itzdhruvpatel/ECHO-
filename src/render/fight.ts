@@ -105,6 +105,7 @@ export interface FightView {
   temple?: boolean; // floor 61 stage
   floor?: number;
   overHint?: string;
+  names?: [string, string]; // HUD labels, for versus
 }
 let view: FightView = {};
 
@@ -360,8 +361,8 @@ function hud(s: Sim) {
   const bEcho = view.echoSide === 1, bCol = bEcho ? '#29f0ff' : FIGHTERS[b.id].color;
   A.bar(40, 34, 500, ha, ghost[0], FIGHTERS[a.id].color, false);
   A.bar(740, 34, 500, hb, ghost[1], bCol, true);
-  A.text(`YOU // ${FIGHTERS[a.id].name}`, 44, 80, 22, '#fff', A.HEAVY, '900', 'left');
-  A.text(`${bEcho ? 'ECHO' : 'CPU'} // ${FIGHTERS[b.id].name}`, 1236, 80, 22, bCol, A.HEAVY, '900', 'right');
+  A.text(`${view.names?.[0] ?? "YOU"} // ${FIGHTERS[a.id].name}`, 44, 80, 22, '#fff', A.HEAVY, '900', 'left');
+  A.text(`${view.names?.[1] ?? (bEcho ? "ECHO" : "CPU")} // ${FIGHTERS[b.id].name}`, 1236, 80, 22, bCol, A.HEAVY, '900', 'right');
   const x = A.x;
   x.fillStyle = 'rgba(0,0,0,.7)'; x.fillRect(588, 22, 104, 62);
   x.strokeStyle = 'rgba(255,255,255,.6)'; x.lineWidth = 2; x.strokeRect(588, 22, 104, 62);

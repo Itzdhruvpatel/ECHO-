@@ -8,10 +8,13 @@ export type Hot = (x: number, y: number, w: number, h: number, onClick: () => vo
 const { W, H } = A;
 
 export const MENU = [
-  { id: 'arcade', name: 'ARCADE TOWER', desc: 'Climb the Spire to floor 99. Every fight teaches your Echo.' },
-  { id: 'echo', name: 'FIGHT YOUR ECHO', desc: 'Floor 99. A neural network trained on how you fight.' },
-  { id: 'lab', name: 'ECHO LAB', desc: 'Your Habit Report and the Echo\'s training.' },
+  { id: 'arcade', name: 'ARCADE TOWER', desc: 'Climb 99 floors. Your Echo waits at the top.' },
+  { id: 'tutorial', name: 'TUTORIAL', desc: 'Learn every control, one move at a time.' },
   { id: 'versus', name: 'VERSUS', desc: 'Two players, one keyboard or two gamepads.' },
+  { id: 'lab', name: 'ECHO LAB', desc: 'Watch your Echo train on your fights.' },
+  { id: 'hunt', name: 'ECHO HUNT', desc: 'Fight other players\' Echoes.' },
+  { id: 'practice', name: 'PRACTICE', desc: 'A dummy that never dies. Full meter.' },
+  { id: 'settings', name: 'SETTINGS', desc: 'Graphics, sound, difficulty, fullscreen.' },
 ] as const;
 export type MenuId = (typeof MENU)[number]['id'];
 
@@ -29,7 +32,27 @@ export interface EchoInfo {
   dist: [string, number][];
 }
 
-export function drawLanding(t: number, hot: Hot, start: () => void) {
+export interface LandingLinks { start: () => void; trailer: () => void; nav: (id: string) => void }
+
+export function drawLanding(t: number, hot: Hot, L: LandingLinks) {
+  drawLandingBody(t, hot, L.start);
+  // nav bar, as in the trailer
+  const x = A.x;
+  x.fillStyle = 'rgba(4,6,10,.7)'; x.fillRect(0, 0, W, 64); x.fillStyle = 'rgba(255,255,255,.08)'; x.fillRect(0, 64, W, 1);
+  A.glitchText('ECHO', 48, 33, 28, t, '#fff', '900', A.HEAVY, 0.15, 'left');
+  ['FIGHTERS', 'STORY', 'ECHO LAB', 'MODES'].forEach((n, i) => {
+    const on = hot(640 + i * 120 - 55, 14, 110, 38, () => L.nav(n));
+    A.text(n, 640 + i * 120, 33, 14, on ? '#29f0ff' : '#c9d1d9', A.MONO, 'bold', 'center', 1, 3);
+  });
+  const on = hot(1120, 16, 120, 34, L.start);
+  x.strokeStyle = '#ff2a44'; x.lineWidth = 2; x.fillStyle = on ? 'rgba(255,42,68,.3)' : 'rgba(0,0,0,0)';
+  x.beginPath(); x.roundRect(1120, 16, 120, 34, 3); x.fill(); x.stroke();
+  A.text('PLAY FREE', 1180, 33, 13, '#fff', A.MONO, 'bold', 'center', 1, 2);
+  const tv = hot(515, 521, 250, 50, L.trailer);
+  A.button(640, 546, 250, 50, 'WATCH TRAILER', false, tv, false, t);
+}
+
+function drawLandingBody(t: number, hot: Hot, start: () => void) {
   const x = A.x;
   A.stage(t * 0.5);
   x.fillStyle = 'rgba(2,3,8,.62)'; x.fillRect(0, 0, W, H);
@@ -48,12 +71,11 @@ export function drawLanding(t: number, hot: Hot, start: () => void) {
   x.restore();
   const hover = hot(515, 441, 250, 58, start);
   A.button(640, 470, 250, 58, 'START GAME', true, hover, false, t);
-  A.text('PRESS ENTER', W / 2, 530, 12, '#8a949d', A.MONO, 'bold', 'center', Math.floor(t * 2) % 2 ? 1 : 0.4, 4);
-  A.text('RUNS IN YOUR BROWSER  //  PC AND LAPTOP RECOMMENDED', W / 2, 610, 12, '#8a949d', A.MONO, 'bold', 'center', a, 3);
+  A.text('RUNS IN YOUR BROWSER  //  PC AND LAPTOP RECOMMENDED  //  PHONE READY', W / 2, 610, 12, '#8a949d', A.MONO, 'bold', 'center', a, 3);
   A.post(t, A.seg(t, 0, 0.35));
 }
 
-export const menuOn = (id: MenuId, e: EchoInfo) => id === 'arcade' || id === 'lab' || (id === 'echo' && e.ready);
+export const menuOn = (id: MenuId, _e: EchoInfo) => id !== 'hunt';
 
 function echoLine(e: EchoInfo) {
   const state = e.training ? `TRAINING ${Math.round(e.progress * 100)}%` : e.ready ? 'MODEL READY' : `${e.need} MORE FIGHT${e.need === 1 ? '' : 'S'} TO WAKE IT`;
@@ -74,23 +96,22 @@ export function drawMenu(t: number, sel: number, pressed: boolean, e: EchoInfo, 
   x.fillStyle = 'rgba(0,0,0,.4)'; x.fillRect(0, 0, 560, H);
   A.text('MAIN MENU', 80, 110, 14, '#7d8590', A.MONO, 'bold', 'left', 1, 8);
   MENU.forEach((m, i) => {
-    const y = 190 + i * 66, on = i === sel, en = menuOn(m.id, e);
-    hot(60, y - 28, 440, 56, () => choose(i));
+    const y = 170 + i * 62, on = i === sel, en = menuOn(m.id, e);
+    hot(60, y - 26, 440, 52, () => choose(i));
     if (on) {
       const g = x.createLinearGradient(60, 0, 500, 0); g.addColorStop(0, 'rgba(255,42,68,.55)'); g.addColorStop(1, 'rgba(255,42,68,0)');
       x.fillStyle = g; x.fillRect(60, y - 24, 440, 48); x.fillStyle = '#ff2a44'; x.fillRect(60, y - 24, 5, 48);
     }
     if (on) A.glitchText(m.name, 84, y, 32, t, en ? '#fff' : '#8a9199', '900', A.HEAVY, 0.2, 'left');
     else A.text(m.name, 84, y, 30, en ? '#5c636b' : '#2f3439', A.HEAVY, '900', 'left');
-    if (m.id === 'versus') A.text('SOON', 480, y, 11, '#5c636b', A.MONO, 'bold', 'right', 1, 3);
-    if (m.id === 'echo' && !en) A.text('LOCKED', 480, y, 11, '#ff6b7d', A.MONO, 'bold', 'right', 1, 3);
+    if (!en) A.text('SOON', 480, y, 11, '#5c636b', A.MONO, 'bold', 'right', 1, 3);
   });
   const d = MENU[sel], en = menuOn(d.id, e);
   x.fillStyle = 'rgba(2,8,12,.75)'; x.fillRect(640, 440, 560, 170);
   x.strokeStyle = 'rgba(41,240,255,.5)'; x.lineWidth = 1; x.strokeRect(640, 440, 560, 170);
   A.text(d.name, 664, 474, 26, '#fff', A.HEAVY, '900', 'left');
   A.text(d.desc, 664, 512, 17, '#bfe9ff', A.COND, 'bold', 'left');
-  const hint = en ? 'W / S  SELECT     ENTER  CONFIRM' : d.id === 'echo' ? `WIN OR LOSE ${e.need} MORE ARCADE FIGHTS FIRST` : 'NOT IN THIS BUILD YET';
+  const hint = en ? 'W / S  SELECT     ENTER  CONFIRM     F  FULLSCREEN' : 'NOT IN THIS BUILD YET';
   A.text(hint, 664, 548, 12, en ? '#7d8590' : '#ff6b7d', A.MONO, 'bold', 'left', 1, 2);
   A.text(echoLine(e), 664, 586, 12, '#29f0ff', A.MONO, 'bold', 'left', 1, 2);
   A.post(t);
@@ -175,40 +196,85 @@ export function drawSummit(t: number, id: string, lines: string[], note: string 
   A.post(t, A.seg(t, 0, 0.2));
 }
 
-export function drawSelect(t: number, sel: number, hot: Hot, pick: (i: number) => void) {
+// All eight fighters from the design, as in the trailer. Version 1 plays the first three.
+export const CARDS = [
+  { look: 'kaal', n: 'KAAL', w: 'URUMI WHIP SWORD', pw: 'REWIND', d: "KAAL'S LOOP", col: '#ff8a1f', weapon: 'urumi', ver: 1, bulk: 0 },
+  { look: 'vanta', n: 'VANTA', w: 'TWIN KUKRIS', pw: 'SHADOW PHASE', d: 'FACELESS', col: '#a45cff', weapon: 'kukri', ver: 1, bulk: 0 },
+  { look: 'rook', n: 'ROOK', w: 'HYDRAULIC HAMMER', pw: 'IRON WILL', d: 'FOUNDATION', col: '#ff4d2e', weapon: 'hammer', ver: 1, bulk: 1.35 },
+  { look: 'ion', n: 'ION', w: 'ELECTRIC CHAIN SICKLE', pw: 'OVERCHARGE', d: 'FULL THROTTLE', col: '#ffe14d', weapon: 'sickle', ver: 2, bulk: 0 },
+  { look: 'bhairav', n: 'BHAIRAV', w: 'FIRE TRIDENT', pw: 'THIRD EYE', d: 'BURN THE ARCHIVE', col: '#4d7cff', weapon: 'trident', ver: 2, bulk: 1.15 },
+  { look: 'mirae', n: 'MIRAE', w: 'GLASS KATANA', pw: 'REFLECTION', d: 'GLASS COFFIN', col: '#bff6ff', weapon: 'katana', ver: 2, bulk: 0 },
+  { look: 'sora', n: 'SORA', w: 'STEEL WAR FANS', pw: 'UPDRAFT', d: 'EYE OF THE STORM', col: '#5dff9a', weapon: 'fans', ver: 3, bulk: 0 },
+  { look: 'glitch', n: 'GLITCH', w: 'STOLEN ARSENAL', pw: 'DESYNC', d: 'CTRL Z', col: '#ff2fa0', weapon: 'glitch', ver: 3, bulk: 0 },
+];
+
+export function drawSelect(t: number, sel: number, who: string, taken: number, hot: Hot, pick: (i: number) => void) {
   const x = A.x;
   x.fillStyle = '#05060a'; x.fillRect(0, 0, W, H);
   x.strokeStyle = 'rgba(41,240,255,.07)'; x.lineWidth = 1;
   for (let i = 0; i < 40; i++) { x.beginPath(); x.moveTo(i * 40 - (t * 20) % 40, 0); x.lineTo(i * 40 - (t * 20) % 40, H); x.stroke(); }
   for (let j = 0; j < 20; j++) { x.beginPath(); x.moveTo(0, j * 40); x.lineTo(W, j * 40); x.stroke(); }
-  A.glitchText('CHOOSE YOUR FIGHTER', W / 2, 62, 46, t, '#fff', '900', A.HEAVY, 0.25);
-  A.text('A / D  BROWSE     ENTER  FIGHT     ESC  BACK', W / 2, 106, 15, '#29f0ff', A.MONO, 'bold', 'center', 1, 4);
-  const cw = 250, gap = 24, x0 = (W - (cw * 3 + gap * 2)) / 2, cy = 140, ch = 400;
-  ROSTER.forEach((id, i) => {
-    const F = FIGHTERS[id], on = i === sel, cx = x0 + i * (cw + gap);
+  A.glitchText(who ? `${who}  //  CHOOSE YOUR FIGHTER` : 'CHOOSE YOUR FIGHTER', W / 2, 62, 46, t, '#fff', '900', A.HEAVY, 0.25);
+  A.text('8 FIGHTERS  //  8 WEAPONS  //  8 DELETIONS', W / 2, 106, 17, '#29f0ff', A.MONO, 'bold', 'center', 1, 4);
+  const cw = 142, gap = 9, x0 = (W - (cw * 8 + gap * 7)) / 2, cy = 140, ch = 400;
+  CARDS.forEach((r, i) => {
+    const appear = A.eOut(A.seg(t, i * 0.06, 0.4 + i * 0.06)), on = i === sel, cx = x0 + i * (cw + gap), locked = r.ver > 1;
     hot(cx, cy, cw, ch, () => pick(i));
-    const g = x.createLinearGradient(0, cy, 0, cy + ch); g.addColorStop(0, on ? F.color + '55' : '#11141c'); g.addColorStop(1, '#07080c');
+    x.save(); x.globalAlpha = appear; x.translate(0, (1 - appear) * 40);
+    const g = x.createLinearGradient(0, cy, 0, cy + ch); g.addColorStop(0, on ? r.col + '55' : '#11141c'); g.addColorStop(1, '#07080c');
     x.fillStyle = g; x.fillRect(cx, cy, cw, ch);
     x.save(); x.beginPath(); x.rect(cx, cy, cw, ch); x.clip();
-    const pose = on ? A.mixPose(A.POSE.idle, A.POSE.raise, (Math.sin(t * 5) * 0.5 + 0.5) * 0.35) : A.POSE.idle;
-    A.drawFighter({ x: cx + cw / 2 - 6, y: cy + ch - 92, f: 1, s: 1.2, p: pose, look: id, dim: !on, weapon: F.weapon, wcol: F.color, whip: 0 }, t + i);
+    const pose = on && !locked ? A.mixPose(A.POSE.idle, A.POSE.raise, (Math.sin(t * 5) * 0.5 + 0.5) * 0.35) : A.POSE.idle;
+    A.drawFighter({ x: cx + cw / 2 - 6, y: cy + ch - 92, f: 1, s: 0.95, p: pose, look: r.look, dim: !on || locked, weapon: r.weapon, wcol: r.col, bulk: r.bulk || undefined, whip: 0 }, t + i);
     x.restore();
-    x.save();
-    x.strokeStyle = on ? F.color : 'rgba(255,255,255,.18)'; x.lineWidth = on ? 3 : 1; if (on) A.glow(F.color, 20); x.strokeRect(cx, cy, cw, ch);
-    x.restore();
+    x.save(); x.strokeStyle = on ? r.col : 'rgba(255,255,255,.18)'; x.lineWidth = on ? 3 : 1; if (on) A.glow(r.col, 20); x.strokeRect(cx, cy, cw, ch); x.restore();
+    if (taken === i) A.text('P1', cx + 14, cy + 18, 13, '#fff', A.MONO, 'bold', 'left', 1, 2);
+    if (locked) { x.fillStyle = 'rgba(0,0,0,.6)'; x.fillRect(cx, cy + 14, cw, 26); A.text(`LOCKED // V${r.ver}`, cx + cw / 2, cy + 27, 11, '#7d8590', A.MONO, 'bold', 'center', 1, 2); }
     x.fillStyle = 'rgba(0,0,0,.75)'; x.fillRect(cx, cy + ch - 72, cw, 72);
-    A.text(F.name, cx + cw / 2, cy + ch - 50, 28, on ? '#fff' : '#9aa0aa', A.HEAVY, '900');
-    A.text(F.weaponName, cx + cw / 2, cy + ch - 22, 12, on ? F.color : '#6c717a', A.COND, 'bold');
+    A.text(r.n, cx + cw / 2, cy + ch - 50, r.n.length > 6 ? 22 : 26, on ? '#fff' : '#9aa0aa', A.HEAVY, '900');
+    A.text(r.w, cx + cw / 2, cy + ch - 22, 10.5, on ? r.col : '#6c717a', A.COND, 'bold');
+    x.restore();
   });
-  const F = FIGHTERS[ROSTER[sel]];
+  const r = CARDS[sel];
   x.fillStyle = 'rgba(0,0,0,.6)'; x.fillRect(80, 572, W - 160, 112);
-  x.strokeStyle = F.color; x.lineWidth = 2; x.strokeRect(80, 572, W - 160, 112);
-  A.glitchText(F.name, 120, 628, 54, t, F.color, '900', A.HEAVY, 0.3, 'left');
-  [['WEAPON', F.weaponName], ['SUPER POWER', F.power], ['STYLE', F.style]].forEach(([lab, v], j) => {
+  x.strokeStyle = r.col; x.lineWidth = 2; x.strokeRect(80, 572, W - 160, 112);
+  A.glitchText(r.n, 120, 620, 54, t, r.col, '900', A.HEAVY, 0.3, 'left');
+  [['WEAPON', r.w], ['SUPER POWER', r.pw], ['DELETION', r.d]].forEach(([lab, v], j) => {
     const xx = 470 + j * 255;
-    A.text(lab, xx, 606, 13, '#7d8590', A.MONO, 'bold', 'left', 1, 3);
-    A.text(v, xx, 640, 19, '#fff', A.COND, 'bold', 'left');
+    A.text(lab, xx, 600, 13, '#7d8590', A.MONO, 'bold', 'left', 1, 3);
+    A.text(v, xx, 630, 19, '#fff', A.COND, 'bold', 'left');
   });
-  A.text(F.moveList, 470, 670, 11, F.color, A.MONO, 'bold', 'left');
+  const playable = ROSTER[sel];
+  A.text(playable ? FIGHTERS[playable].moveList : `COMING IN VERSION ${r.ver}`, 470, 664, 11, playable ? r.col : '#7d8590', A.MONO, 'bold', 'left');
+  A.text('A / D  BROWSE     ENTER  FIGHT     ESC  BACK', W / 2, 706, 12, '#5c636b', A.MONO, 'bold', 'center', 1, 4);
   A.post(t);
 }
+
+// ---------- settings ----------
+export interface Settings { graphics: string; sound: string; difficulty: string; fullscreen: string }
+export const SETTING_ROWS = [
+  { key: 'graphics', name: 'GRAPHICS', opts: ['HIGH', 'LOW'], help: 'LOW turns off glows, most rain and film grain.' },
+  { key: 'sound', name: 'SOUND', opts: ['ON', 'OFF'], help: 'M also mutes during play.' },
+  { key: 'difficulty', name: 'CPU DIFFICULTY', opts: ['EASY', 'NORMAL', 'HARD'], help: 'How fast the Spire CPUs react and block.' },
+  { key: 'fullscreen', name: 'FULLSCREEN', opts: ['ON', 'OFF'], help: 'F toggles it anywhere.' },
+  { key: 'reset', name: 'RESET ECHO DATA', opts: [], help: 'Deletes every recorded fight and the trained Echo.' },
+] as const;
+
+export function drawSettings(t: number, sel: number, s: Settings, confirmReset: boolean, hot: Hot, act: (row: number, dir: number) => void) {
+  const x = A.x;
+  x.fillStyle = '#04050a'; x.fillRect(0, 0, W, H);
+  A.spire(1000, 760, 620, t, 0.5);
+  A.glitchText('SETTINGS', 80, 80, 46, t, '#fff', '900', A.HEAVY, 0.25, 'left');
+  SETTING_ROWS.forEach((row, i) => {
+    const y = 190 + i * 80, on = i === sel;
+    hot(60, y - 30, 760, 60, () => act(i, 1));
+    if (on) { x.fillStyle = 'rgba(255,42,68,.25)'; x.fillRect(60, y - 30, 760, 60); x.fillStyle = '#ff2a44'; x.fillRect(60, y - 30, 5, 60); }
+    A.text(row.name, 84, y - 4, 26, on ? '#fff' : '#8a9199', A.HEAVY, '900', 'left');
+    A.text(row.help, 84, y + 20, 12, '#5c636b', A.MONO, 'bold', 'left', 1, 1);
+    if (row.key === 'reset') A.text(confirmReset ? 'PRESS ENTER AGAIN TO DELETE' : 'ENTER', 800, y, 16, confirmReset ? '#ff2a44' : '#7d8590', A.MONO, 'bold', 'right', 1, 2);
+    else A.text(`<  ${s[row.key]}  >`, 800, y, 20, on ? '#29f0ff' : '#5c636b', A.MONO, 'bold', 'right', 1, 2);
+  });
+  A.text('W / S  SELECT     A / D  CHANGE     ESC  BACK', 80, 660, 13, '#7d8590', A.MONO, 'bold', 'left', 1, 4);
+  A.post(t);
+}
+

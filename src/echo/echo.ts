@@ -4,7 +4,7 @@
 import { ACTIONS, DECISION_TICKS, N_ACTIONS, actionBits, features, legalMask } from '../core/features.ts';
 import { cpuInput, makeCpu, type Cpu } from '../core/ai.ts';
 import type { Sim } from '../core/sim.ts';
-import { allMatches, saveMatch, type MatchRecord } from './store.ts';
+import { allMatches, clearMatches, saveMatch, type MatchRecord } from './store.ts';
 
 export const MIN_MATCHES = 3;
 const MODEL_URL = 'indexeddb://echo-model';
@@ -66,6 +66,15 @@ export function train() {
     }
   };
   worker.postMessage('train');
+}
+
+// Forget everything: recorded fights, the trained model and its stats.
+export async function resetEcho() {
+  await clearMatches();
+  try { localStorage.removeItem('echo-train'); } catch { /* nothing stored */ }
+  indexedDB.deleteDatabase('tensorflowjs');
+  model = null;
+  Object.assign(status, { matches: 0, samples: 0, ready: false, info: null, progress: 0 });
 }
 
 export async function record(m: MatchRecord): Promise<MatchRecord[] | null> {

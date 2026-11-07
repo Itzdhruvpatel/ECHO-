@@ -13,10 +13,11 @@ export function unlockAudio() {
   master.connect(ctx.destination);
 }
 
-export function toggleMute() {
-  muted = !muted;
+export function setMuted(v: boolean) {
+  muted = v;
   if (master) master.gain.value = muted ? 0 : 0.5;
 }
+export const toggleMute = () => setMuted(!muted);
 
 let noiseBuf: AudioBuffer | null = null;
 function noise(): AudioBuffer {
