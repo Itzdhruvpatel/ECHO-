@@ -31,6 +31,7 @@ export const POSE = {
   raise:  {lean:.05, fs:2.9, fe:3.1, bs:.4,  be:2.0, fh:.35, fk:.1,  bh:-.35, bk:-.15},
   crouch: {lean:.3,  fs:1.25,fe:2.7, bs:.9,  be:2.5, fh:1.35,fk:.1,  bh:-.6,  bk:.75},
   jump:   {lean:.15, fs:1.1, fe:2.5, bs:.6,  be:2.2, fh:1.4, fk:.1,  bh:.5,   bk:-.9},
+  spin:   {lean:0,   fs:1.65,fe:1.6, bs:-1.65,be:-1.6,fh:.4, fk:.15, bh:-.4,  bk:-.15},
   sweep:  {lean:.5,  fs:1.0, fe:2.2, bs:-.2, be:1.0, fh:1.55,fk:1.55,bh:-.9,  bk:.9},
 };
 export const mixPose = (a, b, t) => { const o = {}; for (const k in a) o[k] = lerp(a[k], b[k], t); return o; };

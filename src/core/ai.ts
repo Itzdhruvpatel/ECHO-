@@ -1,7 +1,7 @@
 // Rule-based CPU. Reads the fight about 10 times a second and acts after a reaction delay.
 // Deterministic: all randomness comes from its own seeded generator.
 
-import { ATTACK_BUTTONS, B, HALF_W, type Sim } from './sim.ts';
+import { ATTACK_BUTTONS, B, HALF_W, OVERCLOCK_COST, POWER_COST, type Sim } from './sim.ts';
 import { FIGHTERS, MOVES, type Btn, type FighterId } from './data.ts';
 
 export interface Cpu {
@@ -42,6 +42,13 @@ function decide(s: Sim, i: number, c: Cpu): number {
   const P = PERSONA[me.id];
   const r = rand(c);
 
+  const low = me.hp / me.maxHp < 0.35;
+  if (me.id === 'kaal' && me.state === 'hitstun' && low && me.meter >= POWER_COST && r < 0.5) return B.POWER; // panic Rewind
+  if (me.meter >= OVERCLOCK_COST && dist < 220 && r < 0.3) return B.OVERCLOCK;
+  if (me.meter >= POWER_COST && rand(c) < 0.06) {
+    if (me.id === 'vanta' && dist > 200) return B.POWER;
+    if (me.id === 'rook' && dist < 260) return B.POWER;
+  }
   if (op.state === 'attack' && op.move && dist < 360 && r < P.block) return B.BLOCK | (MOVES[op.move].level === 'low' ? B.DOWN : 0);
   if (dist < 150 && r < 0.12) return B.BLOCK;
   if (r < 0.17) return 0; // hesitate
@@ -72,6 +79,12 @@ function decide(s: Sim, i: number, c: Cpu): number {
 }
 
 export function cpuInput(s: Sim, i: number, c: Cpu): number {
+  if (s.phase === 'finish') {
+    // the CPU always performs its Deletion: down, down, special
+    if (s.roundWinner !== i) return 0;
+    const f = s.phaseFrame;
+    return f === 40 || f === 41 || f === 46 || f === 47 ? B.DOWN : f === 52 || f === 53 ? B.SPECIAL : 0;
+  }
   while (c.queue.length && c.queue[0].at <= s.tick) c.out = c.queue.shift()!.bits;
   if (s.phase === 'fight' && s.tick % 6 === 0 && s.tick >= c.busyUntil) {
     const bits = decide(s, i, c);

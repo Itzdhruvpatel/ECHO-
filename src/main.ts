@@ -3,7 +3,8 @@
 import * as A from './render/art.ts';
 import { drawFight, fxEvents, resetFx } from './render/fight.ts';
 import { drawLanding, drawMenu, drawSelect, MENU, type Hot } from './render/screens.ts';
-import { B, createSim, step, type Sim } from './core/sim.ts';
+import { B, createSim, step, type Sim, type SimEvent } from './core/sim.ts';
+import { play, toggleMute, unlockAudio } from './audio.ts';
 import { cpuInput, makeCpu, type Cpu } from './core/ai.ts';
 import { ROSTER, type FighterId } from './core/data.ts';
 
@@ -13,7 +14,7 @@ A.setCtx(canvas.getContext('2d')!);
 const KEYS: Record<string, number> = {
   KeyW: B.UP, KeyS: B.DOWN, KeyA: B.LEFT, KeyD: B.RIGHT,
   KeyU: B.FP, KeyI: B.BP, KeyJ: B.FK, KeyK: B.BK,
-  KeyL: B.BLOCK, Space: B.BLOCK, KeyO: B.SPECIAL,
+  KeyL: B.BLOCK, Space: B.BLOCK, KeyO: B.SPECIAL, KeyP: B.POWER, Semicolon: B.OVERCLOCK,
 };
 const held = new Set<string>();
 let latched = 0; // keys pressed since the last tick, so a quick tap is never lost
@@ -42,9 +43,12 @@ addEventListener('keydown', e => {
   if (e.code in KEYS || e.code.startsWith('Arrow')) e.preventDefault();
   if (!e.repeat) { held.add(e.code); latched |= KEYS[e.code] ?? 0; }
   if (e.repeat) return;
+  unlockAudio();
+  if (e.code === 'KeyM') toggleMute();
   const up = e.code === 'KeyW' || e.code === 'ArrowUp', down = e.code === 'KeyS' || e.code === 'ArrowDown';
   const left = e.code === 'KeyA' || e.code === 'ArrowLeft', right = e.code === 'KeyD' || e.code === 'ArrowRight';
   const ok = e.code === 'Enter' || e.code === 'KeyU', back = e.code === 'Escape';
+  if (screen !== 'fight' && (up || down || left || right || ok || back)) play('ui');
   if (screen === 'landing') { if (ok || e.code === 'Space') go('menu'); }
   else if (screen === 'menu') {
     if (up) menuSel = (menuSel + MENU.length - 1) % MENU.length;
@@ -73,6 +77,7 @@ const toCanvas = (e: PointerEvent) => {
 };
 canvas.addEventListener('pointermove', e => { mouse = toCanvas(e); });
 canvas.addEventListener('pointerdown', e => {
+  unlockAudio();
   const p = toCanvas(e);
   const h = hots.find(r => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h);
   h?.fn();
@@ -86,6 +91,15 @@ function heldBits() {
   let b = 0;
   for (const k of held) b |= KEYS[k] ?? 0;
   return b;
+}
+
+function sounds(s: Sim, ev: SimEvent[], prevPhase: string) {
+  for (const e of ev) {
+    if (e.type === 'hit') play(e.pow >= 1.4 ? 'heavy' : 'hit', e.pow);
+    else play(e.type);
+  }
+  for (const f of s.f) if (f.state === 'attack' && f.frame === 0) play('whoosh', f.move === 'fp' || f.move === 'fk' ? 0.7 : 1);
+  if (s.phase === 'deletion' && prevPhase !== 'deletion') play('deletion');
 }
 
 let last = 0;
@@ -102,9 +116,11 @@ function frame(ms: number) {
     acc += dt;
     while (acc >= 1 / 60) {
       acc -= 1 / 60;
+      const phase = sim.phase;
       const ev = step(sim, [heldBits() | latched, cpuInput(sim, 1, cpu)]);
       latched = 0;
       fxEvents(ev, sim, now);
+      sounds(sim, ev, phase);
     }
     drawFight(sim, now, debug);
   }

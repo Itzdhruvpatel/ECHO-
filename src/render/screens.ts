@@ -98,6 +98,6 @@ export function drawSelect(t: number, sel: number, hot: Hot, pick: (i: number) =
     A.text(lab, xx, 606, 13, '#7d8590', A.MONO, 'bold', 'left', 1, 3);
     A.text(v, xx, 640, 19, '#fff', A.COND, 'bold', 'left');
   });
-  A.text(F.moveList, 470, 670, 12, F.color, A.MONO, 'bold', 'left', 1, 1);
+  A.text(F.moveList, 470, 670, 11, F.color, A.MONO, 'bold', 'left');
   A.post(t);
 }

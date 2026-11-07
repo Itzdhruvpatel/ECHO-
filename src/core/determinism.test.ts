@@ -20,5 +20,6 @@ for (const [p1, p2] of [['kaal', 'rook'], ['vanta', 'kaal'], ['rook', 'vanta']] 
   assert.equal(a.json, b.json, `${p1} vs ${p2}: runs diverged`);
   assert.equal(a.s.phase, 'over', `${p1} vs ${p2}: match never finished`);
   assert.ok(a.hits > 0, `${p1} vs ${p2}: nobody landed a hit`);
+  assert.ok(a.s.deleted, `${p1} vs ${p2}: CPU winner did not perform its Deletion`);
   console.log(`ok  ${p1} vs ${p2}: ${a.s.tick} ticks, ${a.hits} hits, wins ${a.s.wins.join('-')}`);
 }

@@ -3,10 +3,12 @@
 
 import { FIGHTERS, MOVES, type Btn, type FighterId, type MoveData } from './data.ts';
 
-export const B = { UP: 1, DOWN: 2, LEFT: 4, RIGHT: 8, FP: 16, BP: 32, FK: 64, BK: 128, BLOCK: 256, SPECIAL: 512 };
-export const ATTACK_BUTTONS = B.FP | B.BP | B.FK | B.BK | B.SPECIAL;
-const BTN = [B.FP, B.BP, B.FK, B.BK, B.SPECIAL]; // index order used by Fighter.age
-const FP = 0, BP = 1, FK = 2, BK = 3, SP = 4;
+export const B = { UP: 1, DOWN: 2, LEFT: 4, RIGHT: 8, FP: 16, BP: 32, FK: 64, BK: 128, BLOCK: 256, SPECIAL: 512, POWER: 1024, OVERCLOCK: 2048 };
+export const ATTACK_BUTTONS = B.FP | B.BP | B.FK | B.BK | B.SPECIAL | B.POWER | B.OVERCLOCK;
+const BTN = [B.FP, B.BP, B.FK, B.BK, B.SPECIAL, B.POWER, B.OVERCLOCK]; // index order used by Fighter.age
+const FP = 0, BP = 1, FK = 2, BK = 3, SP = 4, PW = 5, OC = 6;
+export const POWER_COST = 100, OVERCLOCK_COST = 300;
+const HISTORY = 60; // ticks of position and health kept for Rewind
 const BTN_INDEX: Record<Btn, number> = { FP, BP, FK, BK };
 const CHAIN_WINDOW = 10; // recovery frames during which a string can still continue
 
@@ -17,7 +19,8 @@ export const ROUND_TIME = 99 * 60, INTRO_FRAMES = 100, OUTRO_FRAMES = 200, DOWN_
 const GRAVITY = 0.9, JUMP_V = 18, JUMP_VX = 5, DASH_FRAMES = 14, DASH_WINDOW = 12, MIN_GAP = 70, METER_MAX = 300;
 
 export type FState = 'idle' | 'walk' | 'crouch' | 'jump' | 'dash' | 'attack' | 'block' | 'hitstun' | 'blockstun' | 'down' | 'ko' | 'win';
-export type Phase = 'intro' | 'fight' | 'outro' | 'over';
+export type Phase = 'intro' | 'fight' | 'outro' | 'finish' | 'deletion' | 'over';
+export const FINISH_FRAMES = 240, DELETION_FRAMES = 330;
 
 export interface Fighter {
   id: FighterId;
@@ -43,10 +46,14 @@ export interface Fighter {
   tapDir: number;
   tapAge: number;
   dashReq: number;
+  invuln: number; // ticks left of Shadow Phase invulnerability
+  armor: number; // ticks left of Iron Will
+  hist: [number, number, number][]; // last HISTORY ticks of [x, y, hp]
 }
 
 export interface SimEvent {
-  type: 'hit' | 'block' | 'throw' | 'ko';
+  type: 'hit' | 'block' | 'throw' | 'ko' | 'power' | 'super';
+  name?: string; // power or Overclock name
   who: number; // attacker index
   x: number;
   y: number;
@@ -63,6 +70,9 @@ export interface Sim {
   wins: [number, number];
   roundWinner: number;
   hitstop: number;
+  finStep: number; // progress through the Deletion input
+  finHeld: number;
+  deleted: boolean;
   f: [Fighter, Fighter];
 }
 
@@ -72,12 +82,13 @@ function makeFighter(id: FighterId, x: number, facing: 1 | -1): Fighter {
     id, x, y: 0, vx: 0, vy: 0, facing, hp, maxHp: hp, meter: 0,
     state: 'idle', frame: 0, move: null, hasHit: false, airUsed: false, stun: 0, kd: false, crouching: false, combo: 0,
     held: 0, age: BTN.map(() => BUFFER), tapDir: 0, tapAge: DASH_WINDOW, dashReq: 0,
+    invuln: 0, armor: 0, hist: [],
   };
 }
 
 export function createSim(p1: FighterId, p2: FighterId): Sim {
   return {
-    tick: 0, phase: 'intro', phaseFrame: 0, round: 1, timer: ROUND_TIME, wins: [0, 0], roundWinner: -1, hitstop: 0,
+    tick: 0, phase: 'intro', phaseFrame: 0, round: 1, timer: ROUND_TIME, wins: [0, 0], roundWinner: -1, hitstop: 0, finStep: 0, finHeld: 0, deleted: false,
     f: [makeFighter(p1, 440, 1), makeFighter(p2, 840, -1)],
   };
 }
@@ -114,8 +125,45 @@ function startMove(f: Fighter, id: string) {
   if (f.y === 0) f.vx = 0;
 }
 
+// Super powers cost 1 meter bar. Kaal can also Rewind out of hitstun.
+function usePower(s: Sim, i: number, ev: SimEvent[]): boolean {
+  const f = s.f[i], o = s.f[1 - i];
+  if (!pressed(f, PW) || f.meter < POWER_COST) return false;
+  consume(f, PW);
+  f.meter -= POWER_COST;
+  const from = f.x;
+  if (f.id === 'kaal') {
+    const [hx, hy, hhp] = f.hist[0] ?? [f.x, f.y, f.hp];
+    f.x = hx; f.y = hy; f.vx = 0; f.vy = hy > 0 ? 0.01 : 0;
+    f.hp = Math.max(f.hp, hhp);
+    f.kd = false;
+    setState(f, hy > 0 ? 'jump' : 'idle');
+    f.airUsed = true;
+  } else if (f.id === 'vanta') {
+    f.x = Math.min(WALL_R, Math.max(WALL_L, o.x - o.facing * 90));
+    f.facing = o.x >= f.x ? 1 : -1;
+    f.invuln = 24;
+    f.vx = 0;
+    setState(f, 'idle');
+  } else {
+    f.armor = 180;
+  }
+  ev.push({ type: 'power', who: i, x: from, y: f.x, pow: 1, name: FIGHTERS[f.id].power });
+  return true;
+}
+
 // Returns true when the input was handled (an attack started, or we are waiting on a throw).
-function tryAttack(f: Fighter): boolean {
+function tryAttack(s: Sim, i: number, ev: SimEvent[]): boolean {
+  const f = s.f[i];
+  if (pressed(f, OC) && f.meter >= OVERCLOCK_COST) {
+    consume(f, OC);
+    f.meter -= OVERCLOCK_COST;
+    startMove(f, FIGHTERS[f.id].overclock);
+    s.hitstop = 50; // cinematic freeze while the banner plays
+    ev.push({ type: 'super', who: i, x: f.x, y: 0, pow: 1, name: MOVES[f.move!].name });
+    return true;
+  }
+  if (usePower(s, i, ev)) return true;
   // Throw = front punch + front kick together. A lone FP or FK waits one tick for its partner.
   if (pressed(f, FP) && pressed(f, FK)) { consume(f, FP, FK); startMove(f, 'throw'); return true; }
   if ((pressed(f, FP) && f.age[FP] < 1) || (pressed(f, FK) && f.age[FK] < 1)) return true;
@@ -165,7 +213,7 @@ export interface Box { x0: number; x1: number; y0: number; y1: number }
 
 // Where a fighter can be hit, in stage coordinates (y up from the floor). Null while invulnerable.
 export function hurtbox(f: Fighter): Box | null {
-  if (f.state === 'down' || f.state === 'ko') return null;
+  if (f.state === 'down' || f.state === 'ko' || f.invuln > 0) return null;
   const low = f.state === 'crouch' || ((f.state === 'block' || f.state === 'blockstun') && f.crouching);
   return { x0: f.x - HALF_W, x1: f.x + HALF_W, y0: f.y, y1: f.y + (low ? CROUCH_H : STAND_H) };
 }
@@ -200,6 +248,12 @@ function checkHit(s: Sim, i: number, m: MoveData, ev: SimEvent[]) {
     d.vx = a.facing * 5;
     s.hitstop = m.hitstop >> 1;
     ev.push({ type: 'block', who: i, x: ex, y: ey, pow: m.pow * 0.6 });
+  } else if (d.armor > 0 && m.level !== 'throw') {
+    // Iron Will: take the damage without flinching and turn it into meter
+    d.hp -= m.dmg;
+    d.meter = Math.min(METER_MAX, d.meter + m.dmg * 0.5);
+    s.hitstop = m.hitstop;
+    ev.push({ type: 'hit', who: i, x: ex, y: ey, pow: m.pow });
   } else {
     d.combo = d.state === 'hitstun' ? d.combo + 1 : 1;
     d.hp -= Math.round(m.dmg * Math.max(0.5, 1 - 0.1 * (d.combo - 1))); // combo damage scaling
@@ -229,10 +283,14 @@ function updateFighter(s: Sim, i: number, bits: number, ev: SimEvent[]) {
   const f = s.f[i], o = s.f[1 - i];
   readInput(f, bits, false);
   f.frame++;
+  if (f.invuln > 0) f.invuln--;
+  if (f.armor > 0) f.armor--;
   const st = f.state;
   if (st === 'idle' || st === 'walk' || st === 'crouch' || st === 'block') {
     f.facing = o.x >= f.x ? 1 : -1;
-    if (!tryAttack(f)) movement(f, bits);
+    if (!tryAttack(s, i, ev)) movement(f, bits);
+  } else if (f.id === 'kaal' && (st === 'hitstun' || st === 'down') && usePower(s, i, ev)) {
+    // Rewind works as an escape
   } else if (st === 'jump') {
     if (!f.airUsed && f.age.slice(0, 4).some(a => a < BUFFER)) {
       consume(f, FP, BP, FK, BK);
@@ -247,6 +305,7 @@ function updateFighter(s: Sim, i: number, bits: number, ev: SimEvent[]) {
     const m = MOVES[f.move!];
     const a1 = m.startup + m.active;
     if (m.lunge && f.frame <= a1) f.vx = m.lunge * f.facing;
+    if (m.rehit && f.frame > m.startup && (f.frame - m.startup - 1) % m.rehit === 0) f.hasHit = false;
     if (!f.hasHit) checkHit(s, i, m, ev);
     const chain = FIGHTERS[f.id].chains[f.move!];
     if (chain && f.state === 'attack' && f.frame > m.startup && f.frame <= a1 + CHAIN_WINDOW) {
@@ -267,6 +326,8 @@ function updateFighter(s: Sim, i: number, bits: number, ev: SimEvent[]) {
     if (f.frame >= DOWN_FRAMES) setState(f, 'idle');
   }
   physics(f);
+  f.hist.push([f.x, f.y, f.hp]);
+  if (f.hist.length > HISTORY) f.hist.shift();
 }
 
 function physics(f: Fighter) {
@@ -313,7 +374,17 @@ function endRound(s: Sim, winner: number) {
 }
 
 function nextRound(s: Sim) {
-  if (s.wins[0] >= 2 || s.wins[1] >= 2) { s.phase = 'over'; return; }
+  if (s.wins[0] >= 2 || s.wins[1] >= 2) {
+    const w = s.roundWinner;
+    // a match won by K.O. gives the winner a short window to perform their Deletion
+    if (w >= 0 && s.f[1 - w].hp <= 0) {
+      s.phase = 'finish';
+      setState(s.f[w], 'idle');
+      s.finStep = 0;
+    } else s.phase = 'over';
+    s.phaseFrame = 0;
+    return;
+  }
   s.round++;
   s.f = [makeFighter(s.f[0].id, 440, 1), makeFighter(s.f[1].id, 840, -1)];
   s.timer = ROUND_TIME;
@@ -347,6 +418,17 @@ export function step(s: Sim, inputs: [number, number]): SimEvent[] {
     const w = s.roundWinner >= 0 ? s.f[s.roundWinner] : null;
     if (w && s.phaseFrame > 50 && ['idle', 'walk', 'crouch', 'block'].includes(w.state)) setState(w, 'win');
     if (s.phaseFrame >= OUTRO_FRAMES) nextRound(s);
+  } else if (s.phase === 'finish') {
+    // Deletion input: down, down, special
+    const bits = inputs[s.roundWinner], edge = bits & ~s.finHeld;
+    s.finHeld = bits;
+    if (edge & B.DOWN) s.finStep = Math.min(2, s.finStep + 1);
+    else if (edge & B.SPECIAL && s.finStep === 2) { s.phase = 'deletion'; s.phaseFrame = 0; s.deleted = true; }
+    else if (edge) s.finStep = 0;
+    if (s.phase === 'finish' && s.phaseFrame >= FINISH_FRAMES) { s.phase = 'over'; s.phaseFrame = 0; }
+  } else if (s.phase === 'deletion' && s.phaseFrame >= DELETION_FRAMES) {
+    s.phase = 'over';
+    s.phaseFrame = 0;
   }
   return ev;
 }
