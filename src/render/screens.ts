@@ -8,10 +8,26 @@ export type Hot = (x: number, y: number, w: number, h: number, onClick: () => vo
 const { W, H } = A;
 
 export const MENU = [
-  { name: 'ARCADE TOWER', desc: 'Best of 3 against the CPU. Your Echo waits at the top of the Spire.', on: true },
-  { name: 'VERSUS', desc: 'Two players, one keyboard or two gamepads.', on: false },
-  { name: 'ECHO LAB', desc: 'Watch your Echo train on your fights.', on: false },
-];
+  { id: 'arcade', name: 'ARCADE TOWER', desc: 'Best of 3 against the CPU. Every fight teaches your Echo.' },
+  { id: 'echo', name: 'FIGHT YOUR ECHO', desc: 'Floor 99. A neural network trained on how you fight.' },
+  { id: 'lab', name: 'ECHO LAB', desc: 'Your Habit Report and the Echo\'s training.' },
+  { id: 'versus', name: 'VERSUS', desc: 'Two players, one keyboard or two gamepads.' },
+] as const;
+export type MenuId = (typeof MENU)[number]['id'];
+
+// What the menu and lab know about the Echo.
+export interface EchoInfo {
+  matches: number;
+  samples: number;
+  need: number; // matches still needed before the Echo can wake up
+  training: boolean;
+  progress: number;
+  ready: boolean;
+  acc: number;
+  loss: number[];
+  lines: string[];
+  dist: [string, number][];
+}
 
 export function drawLanding(t: number, hot: Hot, start: () => void) {
   const x = A.x;
@@ -37,31 +53,125 @@ export function drawLanding(t: number, hot: Hot, start: () => void) {
   A.post(t, A.seg(t, 0, 0.35));
 }
 
-export function drawMenu(t: number, sel: number, hot: Hot, choose: (i: number) => void) {
+export const menuOn = (id: MenuId, e: EchoInfo) => id === 'arcade' || id === 'lab' || (id === 'echo' && e.ready);
+
+function echoLine(e: EchoInfo) {
+  const state = e.training ? `TRAINING ${Math.round(e.progress * 100)}%` : e.ready ? 'MODEL READY' : `${e.need} MORE FIGHT${e.need === 1 ? '' : 'S'} TO WAKE IT`;
+  return `YOUR ECHO:  ${e.samples.toLocaleString('en-US')} MOVES RECORDED  //  ${state}`;
+}
+
+export function drawMenu(t: number, sel: number, pressed: boolean, e: EchoInfo, hot: Hot, choose: (i: number) => void) {
   const x = A.x;
   x.fillStyle = '#04050a'; x.fillRect(0, 0, W, H);
   A.spire(930, 760, 620, t, 0.8);
   A.rain(t, 120, 0.15);
+  if (!pressed) {
+    hot(0, 0, W, H, () => choose(-1));
+    if (Math.floor(t * 4) % 2 === 0) A.glitchText('PRESS START', W / 2, H / 2, 64, t, '#fff', '900', A.HEAVY, 0.4);
+    A.post(t, A.seg(t, 0, 0.2));
+    return;
+  }
   x.fillStyle = 'rgba(0,0,0,.4)'; x.fillRect(0, 0, 560, H);
   A.text('MAIN MENU', 80, 110, 14, '#7d8590', A.MONO, 'bold', 'left', 1, 8);
   MENU.forEach((m, i) => {
-    const y = 190 + i * 70, on = i === sel;
+    const y = 190 + i * 66, on = i === sel, en = menuOn(m.id, e);
     hot(60, y - 28, 440, 56, () => choose(i));
     if (on) {
       const g = x.createLinearGradient(60, 0, 500, 0); g.addColorStop(0, 'rgba(255,42,68,.55)'); g.addColorStop(1, 'rgba(255,42,68,0)');
       x.fillStyle = g; x.fillRect(60, y - 24, 440, 48); x.fillStyle = '#ff2a44'; x.fillRect(60, y - 24, 5, 48);
     }
-    if (on) A.glitchText(m.name, 84, y, 32, t, '#fff', '900', A.HEAVY, 0.2, 'left');
-    else A.text(m.name, 84, y, 30, m.on ? '#8a9199' : '#3c4248', A.HEAVY, '900', 'left');
-    if (!m.on) A.text('SOON', 480, y, 11, '#5c636b', A.MONO, 'bold', 'right', 1, 3);
+    if (on) A.glitchText(m.name, 84, y, 32, t, en ? '#fff' : '#8a9199', '900', A.HEAVY, 0.2, 'left');
+    else A.text(m.name, 84, y, 30, en ? '#5c636b' : '#2f3439', A.HEAVY, '900', 'left');
+    if (m.id === 'versus') A.text('SOON', 480, y, 11, '#5c636b', A.MONO, 'bold', 'right', 1, 3);
+    if (m.id === 'echo' && !en) A.text('LOCKED', 480, y, 11, '#ff6b7d', A.MONO, 'bold', 'right', 1, 3);
   });
-  const d = MENU[sel];
-  x.fillStyle = 'rgba(2,8,12,.75)'; x.fillRect(640, 440, 560, 150);
-  x.strokeStyle = 'rgba(41,240,255,.5)'; x.lineWidth = 1; x.strokeRect(640, 440, 560, 150);
+  const d = MENU[sel], en = menuOn(d.id, e);
+  x.fillStyle = 'rgba(2,8,12,.75)'; x.fillRect(640, 440, 560, 170);
+  x.strokeStyle = 'rgba(41,240,255,.5)'; x.lineWidth = 1; x.strokeRect(640, 440, 560, 170);
   A.text(d.name, 664, 474, 26, '#fff', A.HEAVY, '900', 'left');
   A.text(d.desc, 664, 512, 17, '#bfe9ff', A.COND, 'bold', 'left');
-  A.text(d.on ? 'W / S  SELECT     ENTER  CONFIRM' : 'NOT IN THIS BUILD YET', 664, 560, 12, '#29f0ff', A.MONO, 'bold', 'left', 1, 2);
+  const hint = en ? 'W / S  SELECT     ENTER  CONFIRM' : d.id === 'echo' ? `WIN OR LOSE ${e.need} MORE ARCADE FIGHTS FIRST` : 'NOT IN THIS BUILD YET';
+  A.text(hint, 664, 548, 12, en ? '#7d8590' : '#ff6b7d', A.MONO, 'bold', 'left', 1, 2);
+  A.text(echoLine(e), 664, 586, 12, '#29f0ff', A.MONO, 'bold', 'left', 1, 2);
   A.post(t);
+}
+
+// Echo Lab: the Habit Report, the training curve and what the Echo does most.
+export function drawLab(t: number, e: EchoInfo, hot: Hot, fight: () => void) {
+  const x = A.x;
+  x.fillStyle = '#03070a'; x.fillRect(0, 0, W, H);
+  x.strokeStyle = 'rgba(41,240,255,.06)'; x.lineWidth = 1;
+  for (let i = 0; i < 33; i++) { x.beginPath(); x.moveTo(i * 40, 0); x.lineTo(i * 40, H); x.stroke(); }
+  A.glitchText('ECHO LAB', 80, 70, 46, t, '#fff', '900', A.HEAVY, 0.25, 'left');
+  A.text('THE ARCHIVE HAS BEEN WATCHING YOU FIGHT', 82, 112, 13, '#29f0ff', A.MONO, 'bold', 'left', 1, 4);
+  const box = (bx: number, by: number, bw: number, bh: number, title: string) => {
+    x.fillStyle = 'rgba(2,10,16,.8)'; x.fillRect(bx, by, bw, bh);
+    x.strokeStyle = 'rgba(41,240,255,.45)'; x.strokeRect(bx, by, bw, bh);
+    A.text(title, bx + 18, by + 22, 12, '#7d8590', A.MONO, 'bold', 'left', 1, 4);
+  };
+  // training
+  box(80, 150, 520, 220, 'MODEL');
+  A.text(`${e.matches} FIGHTS  //  ${e.samples.toLocaleString('en-US')} MOVES`, 98, 198, 20, '#fff', A.COND, 'bold', 'left');
+  const state = e.training ? 'TRAINING' : e.ready ? 'READY' : 'ASLEEP';
+  A.text(state, 578, 198, 24, e.ready || e.training ? '#29f0ff' : '#ff6b7d', A.HEAVY, '900', 'right');
+  x.fillStyle = 'rgba(41,240,255,.12)'; x.fillRect(98, 222, 480, 10);
+  x.fillStyle = '#29f0ff'; x.fillRect(98, 222, 480 * (e.training ? e.progress : e.ready ? 1 : (e.matches / (e.matches + e.need))), 10);
+  if (e.loss.length > 1) {
+    const max = Math.max(...e.loss), min = Math.min(...e.loss);
+    x.strokeStyle = '#ff8a1f'; x.lineWidth = 2; x.beginPath();
+    e.loss.forEach((l, i) => { const lx = 98 + (i / (e.loss.length - 1)) * 300, ly = 350 - 60 * ((l - min) / (max - min || 1)); i ? x.lineTo(lx, ly) : x.moveTo(lx, ly); });
+    x.stroke();
+    A.text('TRAINING LOSS', 98, 282, 11, '#ff8a1f', A.MONO, 'bold', 'left', 1, 2);
+    A.text(`MATCHES YOUR CHOICES`, 578, 300, 11, '#7d8590', A.MONO, 'bold', 'right', 1, 2);
+    A.text(`${Math.round(e.acc * 100)}%`, 578, 336, 40, '#fff', A.HEAVY, '900', 'right');
+  } else A.text(e.need ? `PLAY ${e.need} MORE ARCADE FIGHT${e.need === 1 ? '' : 'S'} TO WAKE YOUR ECHO` : 'FIRST TRAINING RUN STARTING', 98, 300, 14, '#bfe9ff', A.MONO, 'bold', 'left', 1, 2);
+  // habit report
+  box(640, 150, 560, 220, 'HABIT REPORT');
+  if (e.lines.length) e.lines.slice(0, 3).forEach((l, i) => A.text(l, 658, 200 + i * 44, 19, i === 0 ? '#fff' : '#9df6ff', A.MONO, 'bold', 'left', 1, 1));
+  else A.text('NOT ENOUGH DATA YET', 658, 200, 18, '#5c636b', A.MONO, 'bold', 'left', 1, 2);
+  // action mix
+  box(80, 400, 1120, 210, 'WHAT YOU DO MOST');
+  e.dist.slice(0, 8).forEach(([name, v], i) => {
+    const cx = 98 + (i % 4) * 276, cy = 450 + Math.floor(i / 4) * 70;
+    A.text(name, cx, cy, 13, '#bfe9ff', A.MONO, 'bold', 'left', 1, 1);
+    x.fillStyle = 'rgba(41,240,255,.12)'; x.fillRect(cx, cy + 14, 240, 10);
+    x.fillStyle = '#29f0ff'; x.fillRect(cx, cy + 14, 240 * Math.min(1, v * 3), 10);
+    A.text(`${Math.round(v * 100)}%`, cx + 240, cy, 13, '#fff', A.MONO, 'bold', 'right');
+  });
+  if (e.ready) {
+    const hover = hot(950, 636, 250, 54, fight);
+    A.button(1075, 663, 250, 54, 'FIGHT YOUR ECHO', true, hover, false, t);
+  }
+  A.text('ESC  BACK', 80, 663, 13, '#7d8590', A.MONO, 'bold', 'left', 1, 4);
+  A.post(t);
+}
+
+// Floor 99: the split screen face-off before the Echo fight, with the player's real habits.
+export function drawSummit(t: number, id: string, lines: string[], hot: Hot, go: () => void) {
+  const x = A.x, F = FIGHTERS[id as keyof typeof FIGHTERS];
+  x.fillStyle = '#000'; x.fillRect(0, 0, W, H);
+  hot(0, 0, W, H, go);
+  const split = A.eOut(A.seg(t, 0, 0.5));
+  x.save(); x.beginPath(); x.moveTo(0, 0); x.lineTo(W / 2 + 40, 0); x.lineTo(W / 2 - 40, H); x.lineTo(0, H); x.clip();
+  const lg = x.createLinearGradient(0, 0, W / 2, 0); lg.addColorStop(0, A.mixc(F.color, -0.8)); lg.addColorStop(1, '#0a0502'); x.fillStyle = lg; x.fillRect(0, 0, W, H);
+  A.drawFighter({ x: A.lerp(-100, 330, split), y: 660, f: 1, s: 1.65, p: A.POSE.idle, look: id, weapon: F.weapon, wcol: F.color }, t);
+  x.restore();
+  x.save(); x.beginPath(); x.moveTo(W / 2 + 40, 0); x.lineTo(W, 0); x.lineTo(W, H); x.lineTo(W / 2 - 40, H); x.clip();
+  const rg = x.createLinearGradient(W / 2, 0, W, 0); rg.addColorStop(0, '#00090c'); rg.addColorStop(1, '#002a33'); x.fillStyle = rg; x.fillRect(0, 0, W, H);
+  A.drawFighter({ x: A.lerp(1380, 950, split), y: 660, f: -1, s: 1.65, p: A.POSE.idle, look: A.ECHO_LOOK[id as keyof typeof A.ECHO_LOOK], weapon: F.weapon, wcol: '#29f0ff', echo: true }, t);
+  x.restore();
+  x.save(); A.glow('#fff', 20); x.strokeStyle = '#fff'; x.lineWidth = 4; x.beginPath(); x.moveTo(W / 2 + 40, 0); x.lineTo(W / 2 - 40, H); x.stroke(); x.restore();
+  A.glitchText('FLOOR 99', W / 2, 60, 26, t, '#fff', '900', A.MONO, 0.3);
+  A.glitchText('VS', W / 2, 340, 120 * A.lerp(2, 1, A.eOut(A.seg(t, 0.3, 0.6))), t, '#ff2a44', '900', A.HEAVY, 0.8);
+  A.text(F.name, 60, 120, 40, F.color, A.HEAVY, '900', 'left', split);
+  A.text('YOUR ECHO', 1220, 120, 40, '#29f0ff', A.HEAVY, '900', 'right', split);
+  lines.forEach((s, i) => {
+    const a = 0.8 + i * 0.55;
+    if (t > a) A.text(s.slice(0, Math.floor(A.seg(t, a, a + 0.35) * s.length)), 1220, 190 + i * 34, 17, i === 3 ? '#fff' : '#9df6ff', A.MONO, 'bold', 'right', 1, 1);
+  });
+  if (t > 3.2) A.glitchText('"I AM THE ORIGINAL."', 1220, 345, 30, t, '#ffffff', '900', A.HEAVY, 0.4, 'right');
+  if (t > 3.6) A.text('PRESS ENTER', W / 2, 690, 12, '#8a949d', A.MONO, 'bold', 'center', Math.floor(t * 2) % 2 ? 1 : 0.4, 4);
+  A.post(t, A.seg(t, 0, 0.2));
 }
 
 export function drawSelect(t: number, sel: number, hot: Hot, pick: (i: number) => void) {

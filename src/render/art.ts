@@ -60,7 +60,10 @@ const LOOKS = {
   echo:  {skin: '#0b0f13', top: null, pants: '#0c1519', boots: '#05070a', arms: 'skin', hair: 'topknot', hairCol: '#030405', sash: '#0b4650', rim: '#29f0ff', eye: '#29f0ff'},
   vanta: {skin: '#2a2433', top: '#1b1624', pants: '#1b1624', boots: '#0c0a10', arms: 'top', hair: 'hood', hairCol: '#3d2266', mask: '#e8e4f0', rim: '#a45cff', gloves: '#0c0a10'},
   rook:  {skin: '#7a4e34', top: '#e8641c', pants: '#3a3f46', boots: '#2a1d12', arms: 'metal', hair: 'bald', beard: '#2a1a10', rim: '#ff4d2e', bulk: 1.32, stripes: '#e6e6d8'},
+  echo_vanta: {skin: '#0b0f13', top: '#081013', pants: '#081013', boots: '#030506', arms: 'top', hair: 'hood', hairCol: '#06272d', mask: '#29f0ff', rim: '#29f0ff', gloves: '#030506'},
+  echo_rook:  {skin: '#0b0f13', top: '#0a1a1f', pants: '#0c1519', boots: '#05070a', arms: 'metal', hair: 'bald', beard: '#030405', rim: '#29f0ff', bulk: 1.32, stripes: '#0b4650'},
 };
+export const ECHO_LOOK = { kaal: 'echo', vanta: 'echo_vanta', rook: 'echo_rook' };
 
 function taper(p1, p2, w1, w2, col, bulge, solid) {
   const dx = p2[0] - p1[0], dy = p2[1] - p1[1], L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;

@@ -2,11 +2,15 @@
 
 import * as A from './render/art.ts';
 import { drawFight, fxEvents, resetFx } from './render/fight.ts';
-import { drawLanding, drawMenu, drawSelect, MENU, type Hot } from './render/screens.ts';
+import { drawLab, drawLanding, drawMenu, drawSelect, drawSummit, MENU, menuOn, type EchoInfo, type Hot } from './render/screens.ts';
 import { B, createSim, step, type Sim, type SimEvent } from './core/sim.ts';
 import { play, toggleMute, unlockAudio } from './audio.ts';
 import { cpuInput, makeCpu, type Cpu } from './core/ai.ts';
 import { ROSTER, type FighterId } from './core/data.ts';
+import { Recorder } from './echo/recorder.ts';
+import { EchoBrain, MIN_MATCHES, record, refresh, status } from './echo/echo.ts';
+import { habits, type Habits } from './echo/habits.ts';
+import type { MatchRecord } from './echo/store.ts';
 
 const canvas = document.getElementById('c') as HTMLCanvasElement;
 A.setCtx(canvas.getContext('2d')!);
@@ -19,25 +23,63 @@ const KEYS: Record<string, number> = {
 const held = new Set<string>();
 let latched = 0; // keys pressed since the last tick, so a quick tap is never lost
 
-type Screen = 'landing' | 'menu' | 'select' | 'fight';
+type Screen = 'landing' | 'menu' | 'select' | 'summit' | 'lab' | 'fight';
 let screen: Screen = 'landing', screenT0 = 0, now = 0;
-let menuSel = 0, selIdx = 0, debug = false;
-let sim: Sim | null = null, cpu: Cpu | null = null, player: FighterId = 'kaal', acc = 0;
+let menuSel = 0, selIdx = 0, debug = false, pressStart = false;
+let mode: 'arcade' | 'echo' = 'arcade';
+let sim: Sim | null = null, cpu: Cpu | null = null, brain: EchoBrain | null = null, rec: Recorder | null = null;
+let player: FighterId = 'kaal', acc = 0, saved = false;
+
+// ---------- the Echo's data ----------
+let hab: Habits | null = null;
+const useMatches = (ms: MatchRecord[] | null) => { if (ms) hab = habits(ms); };
+refresh().then(useMatches).catch(() => { /* IndexedDB blocked: the game still plays, the Echo just never wakes */ });
+
+function echoInfo(): EchoInfo {
+  return {
+    matches: status.matches, samples: status.samples, need: Math.max(0, MIN_MATCHES - status.matches),
+    training: status.training, progress: status.progress, ready: status.ready,
+    acc: status.info?.valAcc ?? 0, loss: status.info?.loss ?? [],
+    lines: hab?.lines ?? [], dist: hab?.dist ?? [],
+  };
+}
 
 function go(s: Screen) { screen = s; screenT0 = now; }
 
-function startFight(p: FighterId) {
-  player = p;
-  const opp = ROSTER[Math.floor(Math.random() * ROSTER.length)];
-  sim = createSim(p, opp);
-  cpu = makeCpu((Math.random() * 2 ** 32) >>> 0);
+function startFight() {
+  const opp = mode === 'echo' ? player : ROSTER[Math.floor(Math.random() * ROSTER.length)];
+  const seed = (Math.random() * 2 ** 32) >>> 0;
+  sim = createSim(player, opp);
+  cpu = makeCpu(seed);
+  brain = mode === 'echo' ? new EchoBrain(seed) : null;
+  rec = new Recorder();
+  saved = false;
   acc = 0;
   resetFx();
   go('fight');
 }
 
-const chooseMenu = (i: number) => { menuSel = i; if (MENU[i].on) go('select'); };
-const pickFighter = (i: number) => { selIdx = i; startFight(ROSTER[i]); };
+function saveFight(s: Sim) {
+  if (saved || !rec) return;
+  saved = true;
+  record({ fighter: s.f[0].id, opponent: s.f[1].id, at: Date.now(), won: s.wins[0] > s.wins[1], x: rec.x, y: rec.y })
+    .then(useMatches).catch(() => {});
+}
+
+const chooseMenu = (i: number) => {
+  if (i < 0) { pressStart = true; return; }
+  menuSel = i;
+  const id = MENU[i].id;
+  if (!menuOn(id, echoInfo())) return;
+  if (id === 'lab') go('lab');
+  else { mode = id === 'echo' ? 'echo' : 'arcade'; go('select'); }
+};
+const pickFighter = (i: number) => {
+  selIdx = i;
+  player = ROSTER[i];
+  if (mode === 'echo') go('summit'); else startFight();
+};
+const labFight = () => { mode = 'echo'; go('select'); };
 
 addEventListener('keydown', e => {
   if (e.code in KEYS || e.code.startsWith('Arrow')) e.preventDefault();
@@ -51,6 +93,7 @@ addEventListener('keydown', e => {
   if (screen !== 'fight' && (up || down || left || right || ok || back)) play('ui');
   if (screen === 'landing') { if (ok || e.code === 'Space') go('menu'); }
   else if (screen === 'menu') {
+    if (!pressStart) { pressStart = true; return; }
     if (up) menuSel = (menuSel + MENU.length - 1) % MENU.length;
     if (down) menuSel = (menuSel + 1) % MENU.length;
     if (ok) chooseMenu(menuSel);
@@ -60,10 +103,16 @@ addEventListener('keydown', e => {
     if (right) selIdx = (selIdx + 1) % ROSTER.length;
     if (ok) pickFighter(selIdx);
     if (back) go('menu');
-  } else if (screen === 'fight') {
+  } else if (screen === 'summit') {
+    if (ok || e.code === 'Space') startFight();
     if (back) go('select');
+  } else if (screen === 'lab') {
+    if (ok && status.ready) labFight();
+    if (back) go('menu');
+  } else if (screen === 'fight') {
+    if (back) go(mode === 'echo' ? 'menu' : 'select');
     if (e.code === 'KeyH') debug = !debug;
-    if (e.code === 'Enter' && sim?.phase === 'over') startFight(player);
+    if (e.code === 'Enter' && sim?.phase === 'over') startFight();
   }
 });
 addEventListener('keyup', e => held.delete(e.code));
@@ -102,6 +151,18 @@ function sounds(s: Sim, ev: SimEvent[], prevPhase: string) {
   if (s.phase === 'deletion' && prevPhase !== 'deletion') play('deletion');
 }
 
+function fightTick(s: Sim) {
+  const p1 = heldBits() | latched;
+  latched = 0;
+  rec!.tick(s, p1);
+  const p2 = brain ? brain.input(s, 1) : cpuInput(s, 1, cpu!);
+  const phase = s.phase;
+  const ev = step(s, [p1, p2]);
+  fxEvents(ev, s, now);
+  sounds(s, ev, phase);
+  if (s.phase === 'over') saveFight(s);
+}
+
 let last = 0;
 function frame(ms: number) {
   now = ms / 1000;
@@ -110,19 +171,19 @@ function frame(ms: number) {
   const t = now - screenT0;
   hots = [];
   if (screen === 'landing') drawLanding(t, hot, () => go('menu'));
-  else if (screen === 'menu') drawMenu(t, menuSel, hot, chooseMenu);
+  else if (screen === 'menu') drawMenu(t, menuSel, pressStart, echoInfo(), hot, chooseMenu);
   else if (screen === 'select') drawSelect(t, selIdx, hot, pickFighter);
-  else if (sim && cpu) {
+  else if (screen === 'lab') drawLab(t, echoInfo(), hot, labFight);
+  else if (screen === 'summit') drawSummit(t, player, hab?.lines ?? [], hot, startFight);
+  else if (sim) {
     acc += dt;
-    while (acc >= 1 / 60) {
-      acc -= 1 / 60;
-      const phase = sim.phase;
-      const ev = step(sim, [heldBits() | latched, cpuInput(sim, 1, cpu)]);
-      latched = 0;
-      fxEvents(ev, sim, now);
-      sounds(sim, ev, phase);
-    }
-    drawFight(sim, now, debug);
+    while (acc >= 1 / 60) { acc -= 1 / 60; fightTick(sim); }
+    drawFight(sim, now, {
+      debug, rec: true,
+      echoSide: brain ? 1 : undefined,
+      panel: brain ? { top: brain.top(5), acc: status.info?.valAcc ?? 0, loss: status.info?.loss ?? [] } : undefined,
+      callout: brain ? hab?.callout : undefined,
+    });
   }
   canvas.style.cursor = hots.some(r => mouse.x >= r.x && mouse.x <= r.x + r.w && mouse.y >= r.y && mouse.y <= r.y + r.h) ? 'pointer' : 'default';
   requestAnimationFrame(frame);

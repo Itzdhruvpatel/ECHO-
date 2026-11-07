@@ -42,7 +42,7 @@ function comboText(t: number) {
   const left = combo.who === 0, xx = left ? 60 : W - 60, a = 1 - A.seg(age, 1, 1.3);
   A.x.save(); A.x.globalAlpha = a;
   A.glitchText(`${combo.n} HIT`, xx, 380, 64 * A.lerp(1.3, 1, A.eOut(Math.min(1, age / 0.12))), t, left ? '#ffb15a' : '#29f0ff', '900', A.HEAVY, 0.4, left ? 'left' : 'right');
-  A.text('COMBO', xx, 424, 16, '#fff', A.MONO, 'bold', left ? 'left' : 'right', 1, 4);
+  A.text(view.echoSide === combo.who ? 'YOUR OWN COMBO' : 'COMBO', xx, 424, 16, '#fff', A.MONO, 'bold', left ? 'left' : 'right', 1, 4);
   A.x.restore();
 }
 
@@ -95,8 +95,24 @@ function poseOf(f: Fighter, t: number) {
 // Who lost the match and is standing dazed for the Deletion, or -1.
 const finished = (s: Sim) => (s.phase === 'finish' || s.phase === 'deletion') ? 1 - s.roundWinner : -1;
 
+// How a fight is shown: the Echo side, its live model panel and the Archive's callout.
+export interface FightView {
+  debug?: boolean;
+  echoSide?: number;
+  panel?: { top: [string, number][]; acc: number; loss: number[] };
+  callout?: string;
+  rec?: boolean;
+}
+let view: FightView = {};
+
+// look, weapon color and glitch flag for fighter i (the Echo is a black and cyan copy)
+function skin(s: Sim, i: number) {
+  const id = s.f[i].id, echo = view.echoSide === i;
+  return { look: echo ? A.ECHO_LOOK[id] : id, wcol: echo ? '#29f0ff' : FIGHTERS[id].color, echo, weapon: FIGHTERS[id].weapon };
+}
+
 function drawOne(s: Sim, i: number, t: number) {
-  const f = s.f[i], x = A.x, D = FIGHTERS[f.id];
+  const f = s.f[i], x = A.x;
   const dazed = finished(s) === i;
   const lying = !dazed && f.y === 0 && ((f.state === 'down' && f.frame < DOWN_FRAMES - 10) || f.state === 'ko');
   fall[i] += ((lying ? 1 : 0) - fall[i]) * 0.25;
@@ -110,7 +126,7 @@ function drawOne(s: Sim, i: number, t: number) {
     x.translate(-f.x, -GY);
   }
   if (f.invuln > 0) x.globalAlpha = 0.35;
-  A.drawFighter({ x: f.x, y: GY, air: dazed ? 0 : f.y, f: f.facing, s: SCALE, p, look: f.id, weapon: D.weapon, wcol: D.color, whip }, t);
+  A.drawFighter({ x: f.x, y: GY, air: dazed ? 0 : f.y, f: f.facing, s: SCALE, p, whip, ...skin(s, i) }, t);
   x.restore();
   if (f.armor > 0) ironWill(f, t);
 }
@@ -226,7 +242,7 @@ const BREAK = 1.6; // seconds into the Deletion when the loser shatters
 function deletionScene(s: Sim, t: number) {
   // staged center screen like the trailer, whatever the fight's final positions were
   const w = { ...s.f[s.roundWinner], x: 540, facing: 1 as const }, l = { ...s.f[1 - s.roundWinner], x: 800, facing: -1 as const };
-  const D = FIGHTERS[w.id], L = FIGHTERS[l.id];
+  const D = FIGHTERS[w.id], ws = skin(s, s.roundWinner), ls = skin(s, 1 - s.roundWinner);
   const dt = s.phaseFrame / 60, x = A.x;
   if (dt < 0.25) shake = Math.max(shake, 6);
   x.fillStyle = 'rgba(120,0,10,.35)'; x.fillRect(0, 0, W, H);
@@ -239,8 +255,8 @@ function deletionScene(s: Sim, t: number) {
       for (let i = 0; i < 4; i++) { const r = 110 + i * 34, a0 = t * (3 + i) * (i % 2 ? -1 : 1); x.beginPath(); x.arc(l.x, 470, r, a0, a0 + 4.6); x.stroke(); }
       x.restore();
       const cyc = (k * k * 9) % 1;
-      for (let g = 3; g >= 1; g--) { x.save(); x.globalAlpha = 0.12 * g; A.drawFighter({ x: l.x - l.facing * g * 10, y: GY, f: l.facing, s: SCALE, p: A.mixPose(P.stag, P.hit, A.clamp(cyc * 2 - g * 0.2)), look: l.id, dim: true }, t); x.restore(); }
-      A.drawFighter({ x: l.x, y: GY, f: l.facing, s: SCALE, p: A.mixPose(P.stag, P.hit, A.eOut(A.clamp(cyc * 2))), look: l.id, weapon: L.weapon, wcol: L.color }, t);
+      for (let g = 3; g >= 1; g--) { x.save(); x.globalAlpha = 0.12 * g; A.drawFighter({ x: l.x - l.facing * g * 10, y: GY, f: l.facing, s: SCALE, p: A.mixPose(P.stag, P.hit, A.clamp(cyc * 2 - g * 0.2)), look: ls.look, dim: true }, t); x.restore(); }
+      A.drawFighter({ x: l.x, y: GY, f: l.facing, s: SCALE, p: A.mixPose(P.stag, P.hit, A.eOut(A.clamp(cyc * 2))), ...ls }, t);
       if (cyc < 0.15) A.sparks(l.x - l.facing * 10, 470, cyc * 0.5, Math.floor(k * k * 9) * 13, '#ffb15a', 22, 1);
       A.text(`LOOP ${String(Math.floor(k * k * 9) + 1).padStart(2, '0')}`, l.x, 250, 22, '#ffb15a', A.MONO, 'bold', 'center', 1, 5);
     } else if (w.id === 'vanta') {
@@ -249,7 +265,7 @@ function deletionScene(s: Sim, t: number) {
       g.addColorStop(0, 'rgba(10,0,20,.9)'); g.addColorStop(1, 'rgba(10,0,20,0)');
       x.fillStyle = g; x.fillRect(0, 0, W, H);
       x.save(); x.globalAlpha = 1 - k * 0.6;
-      A.drawFighter({ x: l.x, y: GY + 60 * k * k, f: l.facing, s: SCALE, p: P.stag, look: l.id, dim: true }, t);
+      A.drawFighter({ x: l.x, y: GY + 60 * k * k, f: l.facing, s: SCALE, p: P.stag, look: ls.look, dim: true }, t);
       x.restore();
       puff(l.x, GY - 60, (dt % 0.6));
     } else {
@@ -257,7 +273,7 @@ function deletionScene(s: Sim, t: number) {
       const hits = Math.floor(dt / 0.4), sink = Math.min(4, hits) * 38 + (dt % 0.4 < 0.08 ? 10 : 0);
       if (dt % 0.4 < 0.05) shake = 14;
       x.save(); x.beginPath(); x.rect(0, 0, W, GY + 2); x.clip();
-      A.drawFighter({ x: l.x, y: GY + sink, f: l.facing, s: SCALE, p: P.stag, look: l.id, weapon: L.weapon, wcol: L.color }, t);
+      A.drawFighter({ x: l.x, y: GY + sink, f: l.facing, s: SCALE, p: P.stag, ...ls }, t);
       x.restore();
       x.strokeStyle = 'rgba(255,120,60,.7)'; x.lineWidth = 2;
       for (let i = 0; i < hits; i++) { x.beginPath(); x.moveTo(l.x - 40 - i * 20, GY); x.lineTo(l.x - 90 - i * 30, GY + 30); x.moveTo(l.x + 40 + i * 20, GY); x.lineTo(l.x + 90 + i * 30, GY + 30); x.stroke(); }
@@ -268,12 +284,12 @@ function deletionScene(s: Sim, t: number) {
   }
   // winner
   const wp = w.id === 'rook' && dt < BREAK ? ((dt % 0.4) < 0.2 ? P.raise : P.whip) : dt < 0.4 ? P.idle : dt < BREAK ? P.raise : P.whip;
-  A.drawFighter({ x: w.x, y: GY, f: w.facing, s: SCALE, p: wp, look: w.id, weapon: D.weapon, wcol: D.color, whip: w.id === 'kaal' && dt > BREAK ? 1 : 0 }, t);
+  A.drawFighter({ x: w.x, y: GY, f: w.facing, s: SCALE, p: wp, ...ws, whip: w.id === 'kaal' && dt > BREAK ? 1 : 0 }, t);
   if (dt < BREAK) A.glitchText(D.deletion, W / 2, 140, 44, t, D.color, '900', A.HEAVY, 0.3);
   if (dt > BREAK + 0.5) {
     const a = A.seg(dt, BREAK + 0.5, BREAK + 0.8);
     A.glitchText('DELETION', W / 2, 220, 110 * A.lerp(1.4, 1, A.eOut(a)), t, '#ff2a44', '900', A.HEAVY, 0.5);
-    A.text('MEMORY DELETED BY THE ARCHIVE', W / 2, 300, 20, '#29f0ff', A.MONO, 'bold', 'center', A.seg(dt, BREAK + 0.9, BREAK + 1.2), 4);
+    A.text(ls.echo ? 'ECHO DATA ABSORBED BY THE ARCHIVE' : ws.echo ? 'YOUR ECHO TAKES YOUR PLACE' : 'MEMORY DELETED BY THE ARCHIVE', W / 2, 300, 20, '#29f0ff', A.MONO, 'bold', 'center', A.seg(dt, BREAK + 0.9, BREAK + 1.2), 4);
   }
 }
 
@@ -283,10 +299,11 @@ function hud(s: Sim) {
   const ha = a.hp / a.maxHp, hb = b.hp / b.maxHp;
   ghost[0] = Math.max(ha, ghost[0] - 0.004);
   ghost[1] = Math.max(hb, ghost[1] - 0.004);
+  const bEcho = view.echoSide === 1, bCol = bEcho ? '#29f0ff' : FIGHTERS[b.id].color;
   A.bar(40, 34, 500, ha, ghost[0], FIGHTERS[a.id].color, false);
-  A.bar(740, 34, 500, hb, ghost[1], FIGHTERS[b.id].color, true);
+  A.bar(740, 34, 500, hb, ghost[1], bCol, true);
   A.text(`YOU // ${FIGHTERS[a.id].name}`, 44, 80, 22, '#fff', A.HEAVY, '900', 'left');
-  A.text(`CPU // ${FIGHTERS[b.id].name}`, 1236, 80, 22, FIGHTERS[b.id].color, A.HEAVY, '900', 'right');
+  A.text(`${bEcho ? 'ECHO' : 'CPU'} // ${FIGHTERS[b.id].name}`, 1236, 80, 22, bCol, A.HEAVY, '900', 'right');
   const x = A.x;
   x.fillStyle = 'rgba(0,0,0,.7)'; x.fillRect(588, 22, 104, 62);
   x.strokeStyle = 'rgba(255,255,255,.6)'; x.lineWidth = 2; x.strokeRect(588, 22, 104, 62);
@@ -300,6 +317,54 @@ function hud(s: Sim) {
   A.meter(40, 690, a.meter / 100, '#ffb15a', false);
   A.text('METER', 270, 696, 12, '#aaa', A.MONO, 'bold', 'left', 1, 3);
   A.meter(1240, 690, b.meter / 100, '#29f0ff', true);
+}
+
+// The Archive is always recording the player.
+function archiveRec(t: number) {
+  if (!view.rec) return;
+  if (Math.floor(t * 2) % 2 === 0) { A.x.save(); A.glow('#ff1e3c', 12); A.x.fillStyle = '#ff2a44'; A.x.beginPath(); A.x.arc(1080, 118, 6, 0, 7); A.x.fill(); A.x.restore(); }
+  A.text('ARCHIVE REC', 1094, 118, 13, '#ff6b7d', A.MONO, 'bold', 'left', 1, 2);
+}
+
+// What the Echo's network wants to do right now, its training loss and its match rate.
+function modelPanel(t: number) {
+  const P = view.panel;
+  if (!P) return;
+  const x = A.x, px = 1012, py = 140;
+  x.fillStyle = 'rgba(2,10,16,.78)'; x.fillRect(px, py, 236, 172);
+  x.strokeStyle = 'rgba(41,240,255,.6)'; x.lineWidth = 1; x.strokeRect(px, py, 236, 172);
+  A.text('ECHO MODEL  //  LIVE', px + 12, py + 16, 11, '#29f0ff', A.MONO, 'bold', 'left', 1, 1);
+  P.top.slice(0, 4).forEach(([name, v], i) => {
+    const yy = py + 38 + i * 21, on = i === 0;
+    A.text(name, px + 12, yy + 5, 10.5, on ? '#fff' : '#8ea4ad', A.MONO, 'bold', 'left');
+    x.fillStyle = 'rgba(41,240,255,.12)'; x.fillRect(px + 104, yy, 116, 10);
+    x.fillStyle = on ? '#29f0ff' : 'rgba(41,240,255,.45)'; x.fillRect(px + 104, yy, 116 * Math.min(1, v), 10);
+  });
+  if (P.loss.length > 1) {
+    const max = Math.max(...P.loss), min = Math.min(...P.loss);
+    x.strokeStyle = '#ff8a1f'; x.lineWidth = 1.5; x.beginPath();
+    P.loss.forEach((l, i) => { const lx = px + 12 + (i / (P.loss.length - 1)) * 120, ly = py + 160 - 26 * ((l - min) / (max - min || 1)); i ? x.lineTo(lx, ly) : x.moveTo(lx, ly); });
+    x.stroke();
+  }
+  A.text('LOSS', px + 12, py + 128, 9.5, '#ff8a1f', A.MONO, 'bold', 'left');
+  A.text(`MATCH ${Math.round(P.acc * 100)}%`, px + 224, py + 152, 13, '#fff', A.MONO, 'bold', 'right');
+  void t;
+}
+
+function callout(s: Sim) {
+  if (!view.callout || s.phase !== 'fight') return;
+  const age = (s.timer > 0 ? (99 * 60 - s.timer) : 0) / 60;
+  const lines: [string, number, number][] = [[view.callout, 1, 3.5], ['IT DODGES THE WAY YOU DODGE', 4, 6]];
+  for (const [txt, a, b] of lines) {
+    if (age < a || age > b) continue;
+    const al = A.seg(age, a, a + 0.15) * (1 - A.seg(age, b - 0.2, b)), x = A.x, size = 24, y = 620;
+    x.save(); x.globalAlpha = al; x.font = `bold ${size}px ${A.COND}`;
+    const w = x.measureText(txt).width + 40;
+    x.fillStyle = 'rgba(0,0,0,.65)'; x.fillRect(W / 2 - w / 2, y - size * 0.9, w, size * 1.8);
+    x.fillStyle = '#29f0ff'; x.fillRect(W / 2 - w / 2, y - size * 0.9, 4, size * 1.8);
+    x.restore();
+    A.text(txt, W / 2, y, size, '#29f0ff', A.COND, 'bold', 'center', al);
+  }
 }
 
 function banners(s: Sim, t: number) {
@@ -330,8 +395,9 @@ function banners(s: Sim, t: number) {
   }
 }
 
-export function drawFight(s: Sim, t: number, debug = false) {
-  const x = A.x;
+export function drawFight(s: Sim, t: number, v: FightView = {}) {
+  view = v;
+  const x = A.x, debug = v.debug;
   shake *= 0.86;
   x.save();
   x.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
@@ -351,7 +417,7 @@ export function drawFight(s: Sim, t: number, debug = false) {
   if (s.phase !== 'deletion') comboText(t);
   if (s.hitstop > 0) { x.fillStyle = 'rgba(255,255,255,.07)'; x.fillRect(0, 0, W, H); }
   if (flash > 0) { x.fillStyle = `rgba(255,255,255,${flash * 0.6})`; x.fillRect(0, 0, W, H); flash -= 0.04; }
-  if (s.phase !== 'deletion') hud(s);
+  if (s.phase !== 'deletion') { hud(s); archiveRec(t); modelPanel(t); callout(s); }
   bannerFx(t);
   banners(s, t);
   A.post(t);
