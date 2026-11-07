@@ -20,7 +20,7 @@ let latched = 0; // keys pressed since the last tick, so a quick tap is never lo
 
 type Screen = 'landing' | 'menu' | 'select' | 'fight';
 let screen: Screen = 'landing', screenT0 = 0, now = 0;
-let menuSel = 0, selIdx = 0;
+let menuSel = 0, selIdx = 0, debug = false;
 let sim: Sim | null = null, cpu: Cpu | null = null, player: FighterId = 'kaal', acc = 0;
 
 function go(s: Screen) { screen = s; screenT0 = now; }
@@ -58,6 +58,7 @@ addEventListener('keydown', e => {
     if (back) go('menu');
   } else if (screen === 'fight') {
     if (back) go('select');
+    if (e.code === 'KeyH') debug = !debug;
     if (e.code === 'Enter' && sim?.phase === 'over') startFight(player);
   }
 });
@@ -105,7 +106,7 @@ function frame(ms: number) {
       latched = 0;
       fxEvents(ev, sim, now);
     }
-    drawFight(sim, now);
+    drawFight(sim, now, debug);
   }
   canvas.style.cursor = hots.some(r => mouse.x >= r.x && mouse.x <= r.x + r.w && mouse.y >= r.y && mouse.y <= r.y + r.h) ? 'pointer' : 'default';
   requestAnimationFrame(frame);

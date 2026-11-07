@@ -3,17 +3,18 @@
 
 import * as A from './art.ts';
 import { FIGHTERS, MOVES } from '../core/data.ts';
-import { DOWN_FRAMES, type Fighter, type Sim, type SimEvent } from '../core/sim.ts';
+import { DOWN_FRAMES, hitbox, hurtbox, type Fighter, type Sim, type SimEvent } from '../core/sim.ts';
 
 const GY = 640, SCALE = 1.3;
 const W = A.W;
 
 interface Spark { x: number; y: number; t0: number; col: string; n: number; pow: number; seed: number }
 let sparks: Spark[] = [], shake = 0, flash = 0, seed = 1;
+let combo = { n: 0, who: 0, t: -9 };
 const ghost = [1, 1], fall = [0, 0];
 
 export function resetFx() {
-  sparks = []; shake = 0; flash = 0;
+  sparks = []; shake = 0; flash = 0; combo = { n: 0, who: 0, t: -9 };
   ghost[0] = ghost[1] = 1; fall[0] = fall[1] = 0;
 }
 
@@ -23,7 +24,34 @@ export function fxEvents(ev: SimEvent[], s: Sim, t: number) {
     sparks.push({ x: e.x, y: GY - e.y, t0: t, col, n: e.type === 'block' ? 14 : 30, pow: e.pow, seed: seed++ * 31 });
     shake = Math.max(shake, (e.type === 'block' ? 4 : 12) * e.pow);
     if (e.type === 'ko') flash = 1;
+    if ((e.combo ?? 0) >= 2) combo = { n: e.combo!, who: e.who, t };
   }
+}
+
+function comboText(t: number) {
+  const age = t - combo.t;
+  if (age > 1.3) return;
+  const left = combo.who === 0, xx = left ? 60 : W - 60, a = 1 - A.seg(age, 1, 1.3);
+  A.x.save(); A.x.globalAlpha = a;
+  A.glitchText(`${combo.n} HIT`, xx, 380, 64 * A.lerp(1.3, 1, A.eOut(Math.min(1, age / 0.12))), t, left ? '#ffb15a' : '#29f0ff', '900', A.HEAVY, 0.4, left ? 'left' : 'right');
+  A.text('COMBO', xx, 424, 16, '#fff', A.MONO, 'bold', left ? 'left' : 'right', 1, 4);
+  A.x.restore();
+}
+
+// Hit and hurt boxes plus state readout, toggled with H.
+function debugBoxes(s: Sim) {
+  const x = A.x;
+  x.save(); x.lineWidth = 2;
+  s.f.forEach((f, i) => {
+    const hu = hurtbox(f), hb = hitbox(f);
+    if (hu) { x.strokeStyle = '#3dff8a'; x.fillStyle = 'rgba(61,255,138,.12)'; x.fillRect(hu.x0, GY - hu.y1, hu.x1 - hu.x0, hu.y1 - hu.y0); x.strokeRect(hu.x0, GY - hu.y1, hu.x1 - hu.x0, hu.y1 - hu.y0); }
+    if (hb) { x.strokeStyle = f.hasHit ? 'rgba(255,42,68,.4)' : '#ff2a44'; x.fillStyle = 'rgba(255,42,68,.2)'; x.fillRect(hb.x0, GY - hb.y1, hb.x1 - hb.x0, hb.y1 - hb.y0); x.strokeRect(hb.x0, GY - hb.y1, hb.x1 - hb.x0, hb.y1 - hb.y0); }
+    const m = f.move ? MOVES[f.move] : null;
+    const info = `${f.state.toUpperCase()} ${f.frame}${m ? `  ${m.name.toUpperCase()} S${m.startup} A${m.active} R${m.recovery}` : ''}`;
+    A.text(info, i ? W - 40 : 40, 130, 13, '#3dff8a', A.MONO, 'bold', i ? 'right' : 'left');
+  });
+  A.text('HITBOX VIEW  (H)', W / 2, 130, 12, '#3dff8a', A.MONO, 'bold', 'center', 1, 3);
+  x.restore();
 }
 
 function poseOf(f: Fighter, t: number) {
@@ -99,7 +127,7 @@ function banners(s: Sim, t: number) {
   if (s.phase === 'intro') {
     if (f < 60) A.glitchText(`ROUND ${s.round}`, W / 2, 300, 96 * A.lerp(1.4, 1, A.eOut(Math.min(1, f / 15))), t, '#fff', '900', A.HEAVY, 0.5);
     else A.glitchText('FIGHT', W / 2, 300, 140 * A.lerp(1.6, 1, A.eOut(Math.min(1, (f - 60) / 10))), t, '#ff2a44', '900', A.HEAVY, 0.8);
-    if (s.round === 1) A.text('WASD MOVE   U I J K ATTACK   U+J THROW   O SPECIAL   L / SPACE BLOCK   ESC MENU', W / 2, 420, 14, '#bfe9ff', A.MONO, 'bold', 'center', 1, 2);
+    if (s.round === 1) A.text('WASD MOVE   U I J K ATTACK   U+J THROW   O SPECIAL   L / SPACE BLOCK   H HITBOXES   ESC MENU', W / 2, 420, 14, '#bfe9ff', A.MONO, 'bold', 'center', 1, 2);
   } else if (s.phase === 'outro') {
     const ko = s.f.some(q => q.hp <= 0);
     A.glitchText(ko ? 'K.O.' : 'TIME', W / 2, 300, 170 * A.lerp(1.8, 1, A.eOut(Math.min(1, f / 12))), t, '#ff2a44', '900', A.HEAVY, 0.7);
@@ -115,7 +143,7 @@ function banners(s: Sim, t: number) {
   }
 }
 
-export function drawFight(s: Sim, t: number) {
+export function drawFight(s: Sim, t: number, debug = false) {
   const x = A.x;
   shake *= 0.86;
   x.save();
@@ -126,7 +154,9 @@ export function drawFight(s: Sim, t: number) {
   for (const i of order) drawOne(s.f[i], i, t);
   sparks = sparks.filter(p => t - p.t0 < 0.7);
   for (const p of sparks) A.sparks(p.x, p.y, t - p.t0, p.seed, p.col, p.n, p.pow);
+  if (debug) debugBoxes(s);
   x.restore();
+  comboText(t);
   if (s.hitstop > 0) { x.fillStyle = 'rgba(255,255,255,.07)'; x.fillRect(0, 0, W, A.H); }
   if (flash > 0) { x.fillStyle = `rgba(255,255,255,${flash * 0.6})`; x.fillRect(0, 0, W, A.H); flash -= 0.04; }
   hud(s);
