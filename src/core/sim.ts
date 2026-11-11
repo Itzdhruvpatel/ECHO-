@@ -1,7 +1,7 @@
 // Deterministic fixed-tick fight simulation (60 ticks per second).
 // No rendering or browser imports, so it runs headless for tests and training later.
 
-import { FIGHTERS, MOVES, type Btn, type FighterId, type MoveData } from './data.ts';
+import { FIGHTERS, MOVES, STOLEN, type Btn, type FighterId, type MoveData } from './data.ts';
 
 export const B = { UP: 1, DOWN: 2, LEFT: 4, RIGHT: 8, FP: 16, BP: 32, FK: 64, BK: 128, BLOCK: 256, SPECIAL: 512, POWER: 1024, OVERCLOCK: 2048 };
 export const ATTACK_BUTTONS = B.FP | B.BP | B.FK | B.BK | B.SPECIAL | B.POWER | B.OVERCLOCK;
@@ -48,6 +48,10 @@ export interface Fighter {
   dashReq: number;
   invuln: number; // ticks left of Shadow Phase invulnerability
   armor: number; // ticks left of Iron Will
+  charge: number; // ticks left of Overcharge: faster and harder hitting
+  foresight: number; // ticks left of Third Eye: the next hit is read and blocked
+  decoy: number; // Reflection: a glass decoy takes the next hit
+  updraft: number; // ticks left of Updraft: floaty, higher jumps
   hist: [number, number, number][]; // last HISTORY ticks of [x, y, hp]
 }
 
@@ -83,7 +87,7 @@ function makeFighter(id: FighterId, x: number, facing: 1 | -1): Fighter {
     id, x, y: 0, vx: 0, vy: 0, facing, hp, maxHp: hp, meter: 0,
     state: 'idle', frame: 0, move: null, hasHit: false, airUsed: false, stun: 0, kd: false, crouching: false, combo: 0,
     held: 0, age: BTN.map(() => BUFFER), tapDir: 0, tapAge: DASH_WINDOW, dashReq: 0,
-    invuln: 0, armor: 0, hist: [],
+    invuln: 0, armor: 0, charge: 0, foresight: 0, decoy: 0, updraft: 0, hist: [],
   };
 }
 
@@ -146,8 +150,22 @@ function usePower(s: Sim, i: number, ev: SimEvent[]): boolean {
     f.invuln = 24;
     f.vx = 0;
     setState(f, 'idle');
-  } else {
+  } else if (f.id === 'rook') {
     f.armor = 180;
+  } else if (f.id === 'ion') {
+    f.charge = 360;
+  } else if (f.id === 'bhairav') {
+    f.foresight = 300;
+  } else if (f.id === 'mirae') {
+    f.decoy = 1;
+  } else if (f.id === 'sora') {
+    f.updraft = 360;
+  } else {
+    // Glitch: lags out of reality, skipping back and through attacks
+    f.x = Math.min(WALL_R, Math.max(WALL_L, f.x - f.facing * 110));
+    f.invuln = 45;
+    f.vx = 0;
+    setState(f, 'idle');
   }
   ev.push({ type: 'power', who: i, x: from, y: f.x, pow: 1, name: FIGHTERS[f.id].power });
   return true;
@@ -168,7 +186,7 @@ function tryAttack(s: Sim, i: number, ev: SimEvent[]): boolean {
   // Throw = front punch + front kick together. A lone FP or FK waits one tick for its partner.
   if (pressed(f, FP) && pressed(f, FK)) { consume(f, FP, FK); startMove(f, 'throw'); return true; }
   if ((pressed(f, FP) && f.age[FP] < 1) || (pressed(f, FK) && f.age[FK] < 1)) return true;
-  if (pressed(f, SP)) { consume(f, SP); startMove(f, FIGHTERS[f.id].special); return true; }
+  if (pressed(f, SP)) { consume(f, SP); startMove(f, specialOf(s, i)); return true; }
   const order: [number, string][] = [[BP, 'bp'], [BK, 'bk'], [FK, 'fk'], [FP, 'fp']];
   for (const [i, id] of order) if (pressed(f, i)) { consume(f, i); startMove(f, id); return true; }
   return false;
@@ -203,7 +221,7 @@ function movement(f: Fighter, bits: number) {
   const d = bits & fwd ? 1 : bits & back ? -1 : 0;
   if (d) {
     if (f.state !== 'walk') setState(f, 'walk');
-    f.vx = d * f.facing * FIGHTERS[f.id].walk * (d < 0 ? 0.8 : 1);
+    f.vx = d * f.facing * FIGHTERS[f.id].walk * (d < 0 ? 0.8 : 1) * (f.charge > 0 ? 1.35 : 1);
   } else {
     if (f.state !== 'idle') setState(f, 'idle');
     f.vx = 0;
@@ -238,6 +256,7 @@ function connects(s: Sim, i: number): [Box, Box, MoveData] | null {
   if (!hb || !hu || !overlap(hb, hu)) return null;
   if (m.level === 'throw' && d.y > 0) return null; // throws whiff on airborne targets
   if (m.level === 'throw' && d.state === 'attack') return null; // a throw loses to an active attack
+  if (m.parry) return null; // a parry stance never hits by itself
   return [hb, hu, m];
 }
 
@@ -262,9 +281,46 @@ function checkHit(s: Sim, i: number, ev: SimEvent[]) {
   if (theirs && s.phase === 'fight') applyHit(s, 1 - i, ...theirs, ev);
 }
 
+// Glitch steals a different special every round; everyone else has their own.
+export function specialOf(s: Sim, i: number): string {
+  const f = s.f[i];
+  return f.id === 'glitch' ? STOLEN[(s.round - 1 + i) % STOLEN.length] : FIGHTERS[f.id].special;
+}
+
+// Defensive powers that cancel a hit outright: Mirae's parry and decoy, Bhairav's Third Eye.
+function defended(s: Sim, i: number, ev: SimEvent[], hb: Box, hu: Box): boolean {
+  const a = s.f[i], d = s.f[1 - i];
+  const ex = a.facing === 1 ? Math.max(hb.x0, hu.x0) : Math.min(hb.x1, hu.x1), ey = (Math.max(hb.y0, hu.y0) + Math.min(hb.y1, hu.y1)) / 2;
+  const dm = d.state === 'attack' && d.move ? MOVES[d.move] : null;
+  if (dm?.parry && d.frame > dm.startup && d.frame <= dm.startup + dm.active) {
+    // Shatter Guard: the attack shatters and the attacker eats a counter
+    a.hp -= Math.round(90 * FIGHTERS[d.id].dmgScale);
+    a.move = null; a.kd = true; a.stun = 30; setState(a, 'hitstun'); a.vx = d.facing * 7; a.vy = 7;
+    s.hitstop = 16;
+    ev.push({ type: 'hit', who: 1 - i, x: ex, y: ey, pow: 1.6, name: 'PARRY' });
+    if (a.hp <= 0) { a.hp = 0; a.state = 'ko'; ev.push({ type: 'ko', who: 1 - i, x: ex, y: ey, pow: 2 }); endRound(s, 1 - i); }
+    return true;
+  }
+  if (d.decoy > 0) {
+    d.decoy = 0;
+    s.hitstop = 10;
+    ev.push({ type: 'block', who: i, x: ex, y: ey, pow: 1.4, name: 'DECOY' });
+    return true;
+  }
+  if (d.foresight > 0 && d.y === 0 && d.state !== 'attack' && d.state !== 'hitstun' && d.state !== 'down') {
+    d.foresight = 0;
+    d.stun = 6; setState(d, 'blockstun');
+    s.hitstop = 8;
+    ev.push({ type: 'block', who: i, x: ex, y: ey, pow: 1.2, name: 'THIRD EYE' });
+    return true;
+  }
+  return false;
+}
+
 function applyHit(s: Sim, i: number, hb: Box, hu: Box, m: MoveData, ev: SimEvent[]) {
-  const a = s.f[i], d = s.f[1 - i], dmg = m.dmg * FIGHTERS[a.id].dmgScale;
+  const a = s.f[i], d = s.f[1 - i], dmg = m.dmg * FIGHTERS[a.id].dmgScale * (a.charge > 0 ? 1.25 : 1);
   a.hasHit = true;
+  if (m.level !== 'throw' && defended(s, i, ev, hb, hu)) return;
   const ex = a.facing === 1 ? Math.max(hb.x0, hu.x0) : Math.min(hb.x1, hu.x1);
   const ey = (Math.max(hb.y0, hu.y0) + Math.min(hb.y1, hu.y1)) / 2;
   a.meter = Math.min(METER_MAX, a.meter + m.dmg * 0.3);
@@ -291,9 +347,10 @@ function applyHit(s: Sim, i: number, hb: Box, hu: Box, m: MoveData, ev: SimEvent
     d.kd = !!m.kd || d.y > 0;
     d.stun = m.level === 'throw' ? 30 : m.hitstun;
     setState(d, 'hitstun');
-    d.vx = a.facing * (m.push ?? 6);
+    d.vx = m.pull ? -a.facing * m.pull : a.facing * (m.push ?? 6);
     if (m.level === 'throw') d.vy = 13;
     else if (d.y > 0) d.vy = 8;
+    else if (m.launch) { d.vy = m.launch; d.kd = true; }
     else if (m.kd) d.vy = 6;
     s.hitstop = m.hitstop;
     ev.push({ type: m.level === 'throw' ? 'throw' : 'hit', who: i, x: ex, y: ey, pow: m.pow, combo: d.combo });
@@ -306,7 +363,7 @@ function applyHit(s: Sim, i: number, hb: Box, hu: Box, m: MoveData, ev: SimEvent
     s.hitstop = 24;
     ev.push({ type: 'ko', who: i, x: ex, y: ey, pow: 2 });
     // a K.O. with your special in a non-final round triggers your Last Breath
-    s.lastBreath = m === MOVES[FIGHTERS[a.id].special] && s.wins[i] === 0;
+    s.lastBreath = m === MOVES[specialOf(s, i)] && s.wins[i] === 0;
     endRound(s, i);
   }
 }
@@ -317,6 +374,9 @@ function updateFighter(s: Sim, i: number, bits: number, ev: SimEvent[]) {
   f.frame++;
   if (f.invuln > 0) f.invuln--;
   if (f.armor > 0) f.armor--;
+  if (f.charge > 0) f.charge--;
+  if (f.foresight > 0) f.foresight--;
+  if (f.updraft > 0) f.updraft--;
   const st = f.state;
   if (st === 'idle' || st === 'walk' || st === 'crouch' || st === 'block') {
     f.facing = o.x >= f.x ? 1 : -1;
@@ -357,7 +417,7 @@ function updateFighter(s: Sim, i: number, bits: number, ev: SimEvent[]) {
 function physics(f: Fighter) {
   f.x += f.vx;
   if (f.y > 0 || f.vy > 0) {
-    f.vy -= GRAVITY;
+    f.vy -= f.updraft > 0 ? GRAVITY * 0.55 : GRAVITY;
     f.y += f.vy;
     if (f.y <= 0) {
       f.y = 0;

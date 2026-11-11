@@ -71,7 +71,12 @@ const LOOKS = {
   echo_vanta: {skin: '#0b0f13', top: '#081013', pants: '#081013', boots: '#030506', arms: 'top', hair: 'hood', hairCol: '#06272d', mask: '#29f0ff', rim: '#29f0ff', gloves: '#030506'},
   echo_rook:  {skin: '#0b0f13', top: '#0a1a1f', pants: '#0c1519', boots: '#05070a', arms: 'metal', hair: 'bald', beard: '#030405', rim: '#29f0ff', bulk: 1.32, stripes: '#0b4650'},
 };
-export const ECHO_LOOK = { kaal: 'echo', vanta: 'echo_vanta', rook: 'echo_rook' };
+// Echo versions of the later fighters: same shapes, drowned in black with a cyan rim
+for (const id of ['ion', 'bhairav', 'mirae', 'sora', 'glitch']) {
+  const L = LOOKS[id], dark = c => (c ? '#081013' : c);
+  LOOKS['echo_' + id] = { ...L, skin: '#0b0f13', top: dark(L.top), pants: '#0c1519', boots: '#05070a', hairCol: '#06272d', rim: '#29f0ff', mask: L.mask && '#29f0ff', visor: L.visor && '#29f0ff', third: L.third && '#29f0ff', coat: L.coat && '#0a1a1f', scarf: L.scarf && '#29f0ff', jstripe: L.jstripe && '#0b4650', sash: L.sash && '#0b4650' };
+}
+export const ECHO_LOOK: Record<string, string> = { kaal: 'echo', vanta: 'echo_vanta', rook: 'echo_rook', ion: 'echo_ion', bhairav: 'echo_bhairav', mirae: 'echo_mirae', sora: 'echo_sora', glitch: 'echo_glitch' };
 
 // tapered, slightly muscled limb segment with rounded ends
 function limb(pts, w, col) { x.strokeStyle = col; x.lineWidth = w; x.lineCap = 'round'; x.lineJoin = 'round'; x.beginPath(); x.moveTo(...pts[0]); for (const q of pts.slice(1)) x.lineTo(...q); x.stroke(); }

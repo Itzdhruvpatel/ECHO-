@@ -10,7 +10,7 @@ import * as story from './render/story.ts';
 import { createSim, step, type Sim, type SimEvent } from './core/sim.ts';
 import { play, say, setMuted, toggleMute, unlockAudio } from './audio.ts';
 import { cpuInput, makeCpu, type Cpu } from './core/ai.ts';
-import { ROSTER, type FighterId } from './core/data.ts';
+import { ROSTER, STARTERS, type FighterId } from './core/data.ts';
 import { Recorder } from './echo/recorder.ts';
 import { EchoBrain, MIN_MATCHES, record, refresh, resetEcho, status } from './echo/echo.ts';
 import { habits, type Habits } from './echo/habits.ts';
@@ -178,7 +178,7 @@ const chooseMenu = (i: number) => {
 
 const pickFighter = (i: number) => {
   selIdx = i;
-  if (i >= ROSTER.length) { play('block'); return; } // locked
+  if (i >= STARTERS) { play('block'); return; } // locked until the Spire unlocks it
   const id = ROSTER[i];
   if (selFor === 'train') { player = id; startTrainer(true); return; }
   if (selFor === 'practice') { player = id; startTrainer(false); return; }

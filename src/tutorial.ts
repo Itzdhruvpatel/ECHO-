@@ -10,7 +10,10 @@ type Watch = { s: Sim; ev: SimEvent[]; started: string | null };
 interface Lesson { title: string; how: string; keys: string; need: number; meter?: boolean; dummyAttacks?: boolean; count: (w: Watch) => number }
 
 // the string each fighter learns, as keys and its finishing move
-const STRING: Record<FighterId, [string, string]> = { kaal: ['U  U  I', 'k_monsoon'], vanta: ['U  I  J', 'v_flurry'], rook: ['I  U', 'r_piledriver'] };
+const STRING: Record<FighterId, [string, string]> = {
+  kaal: ['U  U  I', 'k_monsoon'], vanta: ['U  I  J', 'v_flurry'], rook: ['I  U', 'r_piledriver'],
+  ion: ['U  J', 'i_spark'], bhairav: ['I  I', 'b_pyre'], mirae: ['U  I', 'm_glint'], sora: ['J  J', 's_gust'], glitch: ['I  U', 'g_lag'],
+};
 
 function lessons(id: FighterId): Lesson[] {
   const F = FIGHTERS[id], [sKeys, sMove] = STRING[id];

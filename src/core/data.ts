@@ -2,7 +2,7 @@
 // Frames are 60 per second. Hitbox x is measured forward from the fighter's center,
 // y is height above the attacker's feet.
 
-export type FighterId = 'kaal' | 'vanta' | 'rook';
+export type FighterId = 'kaal' | 'vanta' | 'rook' | 'ion' | 'bhairav' | 'mirae' | 'sora' | 'glitch';
 export type Level = 'high' | 'mid' | 'low' | 'throw';
 
 export interface MoveData {
@@ -25,6 +25,9 @@ export interface MoveData {
   push?: number; // pushback speed on hit
   lunge?: number; // forward speed during startup and active frames
   rehit?: number; // multi-hit: the move can hit again every this many active frames
+  pull?: number; // on hit, drag the opponent toward the attacker at this speed
+  launch?: number; // on hit, pop the opponent up at this speed
+  parry?: boolean; // active frames counter any hit (Shatter Guard)
   pow: number; // effect strength for sparks and shake
 }
 
@@ -52,6 +55,32 @@ export const MOVES: Record<string, MoveData> = {
   oc_coils: { name: 'Thousand Coils', pose: 'spin', startup: 8, active: 60, recovery: 24, dmg: 45, level: 'mid', hitstun: 16, blockstun: 12, hitstop: 5, x0: -130, x1: 230, y0: 0, y1: 260, push: 1, rehit: 10, pow: 1.1 },
   oc_nightshift: { name: 'Night Shift', pose: 'punch', startup: 6, active: 48, recovery: 22, dmg: 24, level: 'mid', hitstun: 10, blockstun: 8, hitstop: 3, x0: -60, x1: 170, y0: 0, y1: 240, push: 0.5, rehit: 4, pow: 0.9 },
   oc_demolition: { name: 'Demolition Order', pose: 'whip', wind: 'raise', startup: 26, active: 5, recovery: 34, dmg: 300, level: 'mid', hitstun: 40, blockstun: 26, hitstop: 22, x0: 20, x1: 230, y0: 0, y1: 240, kd: true, push: 16, pow: 2.6 },
+
+  // ---------- version 2 and 3 fighters ----------
+  // Ion: chain sickle, pulls people in
+  arc: { name: 'Arc Chain', pose: 'whip', startup: 13, active: 5, recovery: 26, dmg: 70, level: 'mid', hitstun: 30, blockstun: 14, hitstop: 10, x0: 50, x1: 300, y0: 80, y1: 210, pull: 9, pow: 1.1 },
+  i_spark: { name: 'Spark Plug', pose: 'kick', startup: 8, active: 4, recovery: 18, dmg: 65, level: 'mid', hitstun: 24, blockstun: 12, hitstop: 9, x0: 20, x1: 150, y0: 90, y1: 180, kd: true, push: 8, pow: 1.1 },
+  i_burnout: { name: 'Burnout', pose: 'punch', startup: 8, active: 8, recovery: 20, dmg: 70, level: 'mid', hitstun: 24, blockstun: 12, hitstop: 9, x0: 10, x1: 120, y0: 100, y1: 210, lunge: 12, pow: 1.1 },
+  oc_redline: { name: 'Redline', pose: 'punch', startup: 8, active: 40, recovery: 26, dmg: 40, level: 'mid', hitstun: 14, blockstun: 10, hitstop: 5, x0: -60, x1: 160, y0: 0, y1: 230, lunge: 14, rehit: 8, push: 0.5, pow: 1.2 },
+  // Bhairav: slow, huge damage
+  titanfall: { name: 'Titan Fall', pose: 'whip', wind: 'raise', startup: 20, active: 5, recovery: 28, dmg: 140, level: 'mid', hitstun: 30, blockstun: 22, hitstop: 14, x0: 0, x1: 220, y0: 0, y1: 140, kd: true, lunge: 6, push: 10, pow: 1.8 },
+  b_pyre: { name: 'Pyre', pose: 'upper', startup: 10, active: 4, recovery: 22, dmg: 90, level: 'mid', hitstun: 28, blockstun: 16, hitstop: 12, x0: 10, x1: 150, y0: 100, y1: 260, launch: 12, kd: true, pow: 1.4 },
+  b_ember: { name: 'Ember Sweep', pose: 'sweep', startup: 11, active: 5, recovery: 24, dmg: 80, level: 'low', hitstun: 26, blockstun: 14, hitstop: 10, x0: 20, x1: 200, y0: 0, y1: 70, kd: true, pow: 1.2 },
+  oc_tandava: { name: 'Tandava', pose: 'spin', startup: 10, active: 56, recovery: 28, dmg: 50, level: 'mid', hitstun: 16, blockstun: 12, hitstop: 6, x0: -150, x1: 230, y0: 0, y1: 260, push: 1, rehit: 8, pow: 1.3 },
+  // Mirae: counters
+  shatter: { name: 'Shatter Guard', pose: 'block', startup: 3, active: 18, recovery: 20, dmg: 0, level: 'mid', hitstun: 0, blockstun: 0, hitstop: 0, x0: 0, x1: 0, y0: 0, y1: 0, parry: true, pow: 1.2 },
+  m_glint: { name: 'Glint', pose: 'whip', startup: 7, active: 4, recovery: 16, dmg: 60, level: 'mid', hitstun: 22, blockstun: 12, hitstop: 8, x0: 20, x1: 190, y0: 110, y1: 220, pow: 1 },
+  m_facet: { name: 'Facet Cut', pose: 'sweep', startup: 9, active: 4, recovery: 20, dmg: 60, level: 'low', hitstun: 24, blockstun: 12, hitstop: 8, x0: 20, x1: 180, y0: 0, y1: 60, kd: true, pow: 1 },
+  oc_mirrors: { name: 'Hall of Mirrors', pose: 'whip', startup: 6, active: 48, recovery: 24, dmg: 38, level: 'mid', hitstun: 12, blockstun: 10, hitstop: 5, x0: -200, x1: 250, y0: 0, y1: 260, push: 0, rehit: 6, pow: 1 },
+  // Sora: air
+  cyclone: { name: 'Cyclone', pose: 'spin', startup: 6, active: 12, recovery: 22, dmg: 45, level: 'mid', hitstun: 26, blockstun: 12, hitstop: 7, x0: -40, x1: 130, y0: 40, y1: 320, rehit: 6, launch: 10, pow: 1.1 },
+  s_gust: { name: 'Gust', pose: 'kick', startup: 7, active: 4, recovery: 16, dmg: 55, level: 'mid', hitstun: 22, blockstun: 12, hitstop: 8, x0: 20, x1: 150, y0: 90, y1: 190, launch: 9, kd: true, pow: 1 },
+  s_tailwind: { name: 'Tailwind', pose: 'punch', startup: 6, active: 6, recovery: 16, dmg: 55, level: 'mid', hitstun: 22, blockstun: 12, hitstop: 8, x0: 10, x1: 120, y0: 100, y1: 210, lunge: 10, pow: 1 },
+  oc_cyclonedance: { name: 'Cyclone Dance', pose: 'spin', startup: 8, active: 50, recovery: 26, dmg: 40, level: 'mid', hitstun: 16, blockstun: 10, hitstop: 5, x0: -120, x1: 200, y0: 0, y1: 360, rehit: 7, launch: 6, pow: 1.2 },
+  // Glitch: steals a special each round (see STOLEN)
+  g_lag: { name: 'Lag Spike', pose: 'punch', startup: 8, active: 4, recovery: 18, dmg: 65, level: 'mid', hitstun: 24, blockstun: 12, hitstop: 12, x0: 20, x1: 140, y0: 100, y1: 210, kd: true, push: 8, pow: 1.2 },
+  g_crash: { name: 'Crash Report', pose: 'sweep', startup: 9, active: 4, recovery: 20, dmg: 60, level: 'low', hitstun: 24, blockstun: 12, hitstop: 9, x0: 20, x1: 170, y0: 0, y1: 60, kd: true, pow: 1 },
+  oc_bluescreen: { name: 'Blue Screen', pose: 'punch', startup: 10, active: 44, recovery: 26, dmg: 45, level: 'mid', hitstun: 20, blockstun: 12, hitstop: 8, x0: -150, x1: 260, y0: 0, y1: 280, push: 0, rehit: 9, pow: 1.3 },
 };
 
 // Strings: from a move, pressing a button during its active frames or early recovery chains into the next move.
@@ -93,6 +122,35 @@ export const FIGHTERS: Record<FighterId, FighterData> = {
     chains: { bp: { FP: 'r_piledriver' }, fk: { FK: 'r_breakwater' } },
     moveList: 'I U  WRECKING BALL  //  J J  BREAKWATER  //  O  GROUND BREAKER  //  P  IRON WILL  //  ;  DEMOLITION ORDER',
   },
+  ion: {
+    name: 'ION', hp: 950, dmgScale: 1, walk: 4.8, dash: 14, special: 'arc', overclock: 'oc_redline', deletion: 'FULL THROTTLE', lastBreath: 'GROUND WIRE', weapon: 'sickle', color: '#ffe14d', weaponName: 'ELECTRIC CHAIN SICKLE', power: 'OVERCHARGE', style: 'ZONER, PULLS YOU IN',
+    chains: { fp: { FK: 'i_spark' }, fk: { BP: 'i_burnout' } },
+    moveList: 'U J  SPARK PLUG  //  J I  BURNOUT  //  O  ARC CHAIN  //  P  OVERCHARGE  //  ;  REDLINE',
+  },
+  bhairav: {
+    name: 'BHAIRAV', hp: 1200, dmgScale: 1.2, walk: 3.4, dash: 9, special: 'titanfall', overclock: 'oc_tandava', deletion: 'BURN THE ARCHIVE', lastBreath: 'PINNED', weapon: 'trident', color: '#4d7cff', weaponName: 'FIRE TRIDENT', power: 'THIRD EYE', style: 'SLOW, HUGE DAMAGE',
+    chains: { bp: { BP: 'b_pyre' }, bk: { BK: 'b_ember' } },
+    moveList: 'I I  PYRE  //  K K  EMBER SWEEP  //  O  TITAN FALL  //  P  THIRD EYE  //  ;  TANDAVA',
+  },
+  mirae: {
+    name: 'MIRAE', hp: 950, dmgScale: 1, walk: 4.6, dash: 13, special: 'shatter', overclock: 'oc_mirrors', deletion: 'GLASS COFFIN', lastBreath: 'SHATTERPOINT', weapon: 'katana', color: '#bff6ff', weaponName: 'GLASS KATANA', power: 'REFLECTION', style: 'COUNTER AND PARRY',
+    chains: { fp: { BP: 'm_glint' }, fk: { BK: 'm_facet' } },
+    moveList: 'U I  GLINT  //  J K  FACET CUT  //  O  SHATTER GUARD  //  P  REFLECTION  //  ;  HALL OF MIRRORS',
+  },
+  sora: {
+    name: 'SORA', hp: 900, dmgScale: 1, walk: 5, dash: 14, special: 'cyclone', overclock: 'oc_cyclonedance', deletion: 'EYE OF THE STORM', lastBreath: 'MONSOON FALL', weapon: 'fans', color: '#5dff9a', weaponName: 'STEEL WAR FANS', power: 'UPDRAFT', style: 'AERIAL',
+    chains: { fk: { FK: 's_gust' }, fp: { FP: 's_tailwind' } },
+    moveList: 'J J  GUST  //  U U  TAILWIND  //  O  CYCLONE  //  P  UPDRAFT  //  ;  CYCLONE DANCE',
+  },
+  glitch: {
+    name: 'GLITCH', hp: 950, dmgScale: 1, walk: 4.8, dash: 16, special: 'coil', overclock: 'oc_bluescreen', deletion: 'CTRL Z', lastBreath: 'BUFFER OVERFLOW', weapon: 'glitch', color: '#ff2fa0', weaponName: 'STOLEN ARSENAL', power: 'DESYNC', style: 'WILDCARD',
+    chains: { bp: { FP: 'g_lag' }, fk: { BK: 'g_crash' } },
+    moveList: 'I U  LAG SPIKE  //  J K  CRASH REPORT  //  O  COPY PASTE (STOLEN EACH ROUND)  //  P  DESYNC  //  ;  BLUE SCREEN',
+  },
 };
 
-export const ROSTER: FighterId[] = ['kaal', 'vanta', 'rook'];
+export const ROSTER: FighterId[] = ['kaal', 'vanta', 'rook', 'ion', 'bhairav', 'mirae', 'sora', 'glitch'];
+// the first three are open from the start; the rest unlock one per Spire clear, in this order
+export const STARTERS = 3;
+// Glitch steals a different special each round, in this order
+export const STOLEN = ['coil', 'lunge', 'slam', 'arc', 'titanfall', 'shatter', 'cyclone'];

@@ -21,7 +21,7 @@ function check(s: Sim, where: string) {
 
 let fights = 0, ticks = 0;
 for (let n = 0; n < 120; n++) {
-  const a = ROSTER[n % 3], b = ROSTER[Math.floor(n / 3) % 3];
+  const a = ROSTER[n % ROSTER.length], b = ROSTER[(n * 3 + 1) % ROSTER.length];
   const s = createSim(a, b);
   // each side holds a random set of buttons for a random short time, sometimes with full meter
   const held: [number, number][] = [[0, 0], [0, 0]];
