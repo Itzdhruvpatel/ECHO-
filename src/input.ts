@@ -60,19 +60,30 @@ export function padPresses(): string[] {
 }
 
 // ---------- touch ----------
-export let touchMode = false;
+// true once the player touches the screen (or on a touch-only device), so prompts say TAP and show touch keys
+export let touchMode = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches;
+
+// The touch label for a keyboard key, for prompts and the tutorial.
+const TOUCH_KEYS: Record<string, string> = { W: 'UP', S: 'DOWN', A: 'LEFT', D: 'RIGHT', L: 'BLK', SPACE: 'BLK', O: 'SP', P: 'PWR', ';': 'OC', ENTER: 'TAP', 'U + J': 'THR' };
+export function keyLabel(keys: string): string {
+  if (!touchMode) return keys;
+  if (TOUCH_KEYS[keys]) return TOUCH_KEYS[keys];
+  return keys.split(/\s+/).filter(k => k && k !== 'OR').map(k => TOUCH_KEYS[k] ?? k).filter((k, i, a) => i === 0 || k !== a[i - 1]).join('  ');
+}
 const touches = new Map<number, { x: number; y: number }>();
-const DPAD = { x: 170, y: 560, r: 120 };
+// sized for thumbs: the game is scaled down on a phone, so radii here are generous
+const DPAD = { x: 175, y: 545, r: 135 };
 interface TouchButton { label: string; bit: number; x: number; y: number; r: number; col: string }
 const BUTTONS: TouchButton[] = [
-  { label: 'U', bit: B.FP, x: 990, y: 520, r: 40, col: '#ffffff' },
-  { label: 'I', bit: B.BP, x: 1080, y: 470, r: 40, col: '#ffffff' },
-  { label: 'J', bit: B.FK, x: 1010, y: 620, r: 40, col: '#ffffff' },
-  { label: 'K', bit: B.BK, x: 1100, y: 570, r: 40, col: '#ffffff' },
-  { label: 'BLK', bit: B.BLOCK, x: 1195, y: 640, r: 42, col: '#29f0ff' },
-  { label: 'SP', bit: B.SPECIAL, x: 1190, y: 520, r: 40, col: '#ff8a1f' },
-  { label: 'PWR', bit: B.POWER, x: 1170, y: 400, r: 32, col: '#ffb15a' },
-  { label: 'OC', bit: B.OVERCLOCK, x: 1240, y: 330, r: 30, col: '#ff2a44' },
+  { label: 'U', bit: B.FP, x: 965, y: 510, r: 50, col: '#ffffff' },
+  { label: 'I', bit: B.BP, x: 1075, y: 455, r: 50, col: '#ffffff' },
+  { label: 'J', bit: B.FK, x: 985, y: 630, r: 50, col: '#ffffff' },
+  { label: 'K', bit: B.BK, x: 1095, y: 575, r: 50, col: '#ffffff' },
+  { label: 'SP', bit: B.SPECIAL, x: 1195, y: 500, r: 50, col: '#ff8a1f' },
+  { label: 'BLK', bit: B.BLOCK, x: 1205, y: 630, r: 52, col: '#29f0ff' },
+  { label: 'THR', bit: B.FP | B.FK, x: 860, y: 625, r: 40, col: '#bfe9ff' },
+  { label: 'PWR', bit: B.POWER, x: 1150, y: 360, r: 40, col: '#ffb15a' },
+  { label: 'OC', bit: B.OVERCLOCK, x: 1240, y: 290, r: 36, col: '#ff2a44' },
 ];
 
 export function touchStart(id: number, x: number, y: number) { touchMode = true; touches.set(id, { x, y }); }
@@ -91,7 +102,10 @@ function touchBits(): number {
       }
       continue;
     }
-    for (const btn of BUTTONS) if (Math.hypot(x - btn.x, y - btn.y) < btn.r * 1.25) b |= btn.bit;
+    // nearest button only, so a thumb between two buttons does not press both
+    let best: TouchButton | null = null, bd = Infinity;
+    for (const btn of BUTTONS) { const d = Math.hypot(x - btn.x, y - btn.y); if (d < btn.r * 1.3 && d < bd) { best = btn; bd = d; } }
+    if (best) b |= best.bit;
   }
   return b;
 }
@@ -109,7 +123,7 @@ export function drawTouchPad() {
     x.beginPath(); x.arc(DPAD.x + ux * 72, DPAD.y + uy * 72, 26, 0, 7); x.fill();
   }
   for (const btn of BUTTONS) {
-    const on = active & btn.bit;
+    const on = (active & btn.bit) === btn.bit;
     x.fillStyle = on ? btn.col : 'rgba(0,0,0,.45)'; x.strokeStyle = btn.col;
     x.beginPath(); x.arc(btn.x, btn.y, btn.r, 0, 7); x.fill(); x.stroke();
     A.text(btn.label, btn.x, btn.y, btn.label.length > 1 ? 13 : 20, on ? '#000' : btn.col, A.HEAVY, '900');

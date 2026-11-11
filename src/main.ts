@@ -3,7 +3,7 @@
 import * as A from './render/art.ts';
 import { drawFight, fxEvents, resetFx, timeScale } from './render/fight.ts';
 import {
-  drawLab, drawLanding, drawMenu, drawSelect, drawSettings, drawSummit, CARDS, MENU, SETTING_ROWS, menuOn,
+  backButton, drawLab, drawLanding, drawMenu, drawSelect, drawSettings, drawSummit, CARDS, MENU, SETTING_ROWS, menuOn,
   type EchoInfo, type Hot, type Settings,
 } from './render/screens.ts';
 import * as story from './render/story.ts';
@@ -26,7 +26,8 @@ A.setCtx(canvas.getContext('2d')!);
 function load<T>(key: string, fallback: T): T {
   try { return { ...fallback, ...JSON.parse(localStorage.getItem(key) ?? '{}') }; } catch { return fallback; }
 }
-const settings: Settings = load('echo-settings', { graphics: 'HIGH', sound: 'ON', difficulty: 'NORMAL', fullscreen: 'ON' });
+// phones start on LOW graphics so the fight holds 60 fps
+const settings: Settings = load('echo-settings', { graphics: input.touchMode ? 'LOW' : 'HIGH', sound: 'ON', difficulty: 'NORMAL', fullscreen: 'ON' });
 let tutorialDone = (() => { try { return localStorage.getItem('echo-tutorial') === 'done'; } catch { return false; } })();
 function applySettings() {
   A.setLow(settings.graphics === 'LOW');
@@ -271,6 +272,8 @@ addEventListener('keydown', e => {
 });
 addEventListener('keyup', e => input.keyUp(e.code));
 addEventListener('blur', () => input.clearKeys());
+// no long-press menu or text selection on touch screens
+addEventListener('contextmenu', e => e.preventDefault());
 
 // ---------- mouse and touch ----------
 let mouse = { x: -1, y: -1 }, hots: { x: number; y: number; w: number; h: number; fn: () => void }[] = [];
@@ -289,7 +292,8 @@ canvas.addEventListener('pointerdown', e => {
   const p = toCanvas(e);
   if (e.pointerType === 'touch') input.touchStart(e.pointerId, p.x, p.y);
   if (screenNow === 'landing') enterFullscreen();
-  hots.find(r => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h)?.fn();
+  // last registered wins: it was drawn on top
+  hots.findLast(r => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h)?.fn();
 });
 for (const ev of ['pointerup', 'pointercancel', 'pointerleave'] as const) canvas.addEventListener(ev, e => input.touchEnd(e.pointerId));
 const hot: Hot = (x, y, w, h, fn) => {
@@ -337,8 +341,9 @@ function fightTick(s: Sim) {
 
 function overHint(s: Sim): string {
   const won = s.wins[0] > s.wins[1];
-  if (mode !== 'tower') return 'ENTER  REMATCH     //     ESC  MAIN MENU';
-  return won ? (floor().echo ? 'ENTER  FACE THE ARCHIVE' : 'ENTER  CLIMB ON') : 'ENTER  CONTINUE';
+  const tap = input.touchMode;
+  if (mode !== 'tower') return tap ? 'TAP TO REMATCH  //  MENU BUTTON BELOW' : 'ENTER  REMATCH     //     ESC  MAIN MENU';
+  return (tap ? 'TAP  ' : 'ENTER  ') + (won ? (floor().echo ? 'FACE THE ARCHIVE' : 'CLIMB ON') : 'CONTINUE');
 }
 
 let last = 0;
@@ -373,6 +378,8 @@ function frame(ms: number) {
       while (acc >= 1 / 60) { acc -= 1 / 60; const p = input.bitsFor(0); const s = trainer.s, ph = s.phase; const ev = trainer.update(p, now); fxEvents(ev, trainer.s, now); sounds(trainer.s, ev, ph); }
       drawFight(trainer.s, now, { debug, names: ['YOU', 'DUMMY'] });
       drawTrainer(trainer, now);
+      if (input.touchMode && trainer.lessonsOn && !trainer.finished) { const tr = trainer; hot(340, 128, 600, 150, () => tr.next()); }
+      if (input.touchMode && !trainer.lessonsOn) { const tr = trainer; hot(440, 150, 400, 40, () => { tr.dummy = DUMMY[(DUMMY.indexOf(tr.dummy) + 1) % DUMMY.length]; }); }
       if (trainer.lessonsOn && trainer.finished) hot(0, 0, A.W, A.H, finishTutorial);
       touchExtras();
       break;
@@ -393,6 +400,7 @@ function frame(ms: number) {
       break;
   }
   if (screenNow === 'fight' || screenNow === 'train') input.drawTouchPad();
+  if (input.touchMode && ['select', 'lab', 'settings', 'summit', 'fallen'].includes(screenNow)) backButton(hot, () => { if (screenNow === 'select' && selFor === 'p2') selFor = 'p1'; else go('menu'); });
   canvas.style.cursor = hots.some(r => mouse.x >= r.x && mouse.x <= r.x + r.w && mouse.y >= r.y && mouse.y <= r.y + r.h) ? 'pointer' : 'default';
   requestAnimationFrame(frame);
 }

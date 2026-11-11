@@ -4,9 +4,10 @@
 import * as A from './art.ts';
 import { FIGHTERS, type FighterId } from '../core/data.ts';
 import type { Hot } from './screens.ts';
+import { touchMode } from '../input.ts';
 
 const { W, H } = A;
-const skip = (t: number) => { if (t > 1) A.text('ENTER  SKIP', W - 40, H - 30, 11, '#5c636b', A.MONO, 'bold', 'right', 1, 4); };
+const skip = (t: number) => { if (t > 1) A.text((touchMode ? 'TAP TO SKIP' : 'ENTER  SKIP'), W - 40, H - 30, 11, '#5c636b', A.MONO, 'bold', 'right', 1, 4); };
 
 export const OPENING_SECONDS = 5.2;
 
@@ -138,7 +139,7 @@ export function drawChoice(t: number, sel: number, hot: Hot, pick: (i: number) =
   });
   A.text('THE TRUE ENDING', W / 2, 110, 18, '#7d8590', A.MONO, 'bold', 'center', a, 10);
   if (t > 1.2) A.glitchText('CHOOSE.', W / 2, 600, 70, t, '#ff2a44', '900', A.HEAVY, 0.9);
-  A.text('A / D  CHOOSE     ENTER  CONFIRM', W / 2, 670, 12, '#5c636b', A.MONO, 'bold', 'center', 1, 4);
+  A.text((touchMode ? 'TAP A CHOICE' : 'A / D  CHOOSE     ENTER  CONFIRM'), W / 2, 670, 12, '#5c636b', A.MONO, 'bold', 'center', 1, 4);
   A.post(t, A.seg(t, 0, 0.3));
 }
 
@@ -160,7 +161,7 @@ export function drawEnding(t: number, choice: number, me: FighterId) {
   if (t > 5.5) {
     A.glitchText('ECHO', W / 2, 470, 120 * A.lerp(1.2, 1, A.eOut(A.seg(t, 5.5, 6))), t, '#ffffff', '900', A.HEAVY, 0.4);
     A.text('THANKS FOR PLAYING', W / 2, 560, 16, '#29f0ff', A.MONO, 'bold', 'center', A.seg(t, 6, 6.4), 6);
-    A.text('ENTER  MAIN MENU', W / 2, 640, 12, '#7d8590', A.MONO, 'bold', 'center', A.seg(t, 6.5, 7), 4);
+    A.text((touchMode ? 'TAP FOR MAIN MENU' : 'ENTER  MAIN MENU'), W / 2, 640, 12, '#7d8590', A.MONO, 'bold', 'center', A.seg(t, 6.5, 7), 4);
   }
   A.post(t, A.seg(t, 0, 0.6));
 }
@@ -173,6 +174,6 @@ export function drawFallen(t: number, floor: number, toEcho: boolean) {
   A.rain(t, 140, 0.12);
   A.glitchText(toEcho ? 'YOUR ECHO TOOK YOUR PLACE' : 'THE SPIRE KEEPS YOU', W / 2, 260, toEcho ? 56 : 70, t, '#ff2a44', '900', A.HEAVY, 0.5);
   A.text(`FALLEN ON FLOOR ${floor}`, W / 2, 340, 20, '#bfe9ff', A.MONO, 'bold', 'center', A.seg(t, 0.5, 1), 6);
-  A.text('ENTER  TRY THIS FLOOR AGAIN     //     ESC  MAIN MENU', W / 2, 460, 14, '#7d8590', A.MONO, 'bold', 'center', A.seg(t, 1, 1.5), 4);
+  A.text((touchMode ? 'TAP TO TRY THIS FLOOR AGAIN' : 'ENTER  TRY THIS FLOOR AGAIN     //     ESC  MAIN MENU'), W / 2, 460, 14, '#7d8590', A.MONO, 'bold', 'center', A.seg(t, 1, 1.5), 4);
   A.post(t, A.seg(t, 0, 0.4));
 }

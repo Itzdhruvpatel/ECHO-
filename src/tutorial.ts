@@ -2,6 +2,7 @@
 // that each wait until the player has actually done the move.
 
 import * as A from './render/art.ts';
+import { keyLabel, touchMode } from './input.ts';
 import { FIGHTERS, MOVES, type FighterId } from './core/data.ts';
 import { B, ROUND_TIME, createSim, step, type Sim, type SimEvent } from './core/sim.ts';
 
@@ -29,7 +30,7 @@ function lessons(id: FighterId): Lesson[] {
     { title: 'STRING', how: `Press the keys in rhythm for ${MOVES[sMove].name}.`, keys: sKeys, need: 1, count: started(sMove) },
     { title: 'SUPER POWER', how: `Costs 1 meter bar. Yours is ${F.power}.`, keys: 'P', need: 1, meter: true, count: event('power') },
     { title: 'OVERCLOCK', how: `Costs all 3 bars: ${MOVES[F.overclock].name}.`, keys: ';', need: 1, meter: true, count: event('super') },
-    { title: 'READY', how: 'Finish round 1 or 2 with your special for a Last Breath. After the final K.O., press S S O to delete them.', keys: 'ENTER', need: Infinity, count: () => 0 },
+    { title: 'READY', how: 'Finish round 1 or 2 with your special for a Last Breath. After the final K.O., enter down, down, special to delete them.', keys: 'ENTER', need: Infinity, count: () => 0 },
   ];
 }
 
@@ -108,7 +109,7 @@ export function drawTrainer(tr: Trainer, now: number) {
   const x = A.x, W = A.W;
   if (!tr.lessonsOn) {
     A.text('PRACTICE', W / 2, 140, 22, '#fff', A.HEAVY, '900', 'center', 1, 6);
-    A.text(`T  DUMMY: ${tr.dummy.toUpperCase()}     H  HITBOXES     ESC  MENU`, W / 2, 172, 13, '#29f0ff', A.MONO, 'bold', 'center', 1, 3);
+    A.text(touchMode ? `TAP HERE  //  DUMMY: ${tr.dummy.toUpperCase()}` : `T  DUMMY: ${tr.dummy.toUpperCase()}     H  HITBOXES     ESC  MENU`, W / 2, 172, 13, '#29f0ff', A.MONO, 'bold', 'center', 1, 3);
     return;
   }
   const L = tr.lesson!, done = tr.doneAt >= 0;
@@ -119,15 +120,15 @@ export function drawTrainer(tr: Trainer, now: number) {
   A.glitchText(L.title, bx + 20, by + 58, 34, now, done ? '#3dff8a' : '#ffffff', '900', A.HEAVY, 0.2, 'left');
   // key chip
   x.font = `900 22px ${A.HEAVY}`;
-  const kw = Math.max(70, x.measureText(L.keys).width + 34), kx = bx + bw - 20 - kw;
+  const keys = keyLabel(L.keys), kw = Math.max(70, x.measureText(keys).width + 34), kx = bx + bw - 20 - kw;
   x.fillStyle = 'rgba(41,240,255,.15)'; x.fillRect(kx, by + 36, kw, 44);
   x.strokeStyle = '#29f0ff'; x.lineWidth = 2; x.strokeRect(kx, by + 36, kw, 44);
-  A.text(L.keys, kx + kw / 2, by + 59, 22, '#29f0ff', A.HEAVY, '900');
+  A.text(keys, kx + kw / 2, by + 59, 22, '#29f0ff', A.HEAVY, '900');
   A.text(L.how, bx + 20, by + 100, 15, '#bfe9ff', A.COND, 'bold', 'left');
   if (Number.isFinite(L.need)) {
     x.fillStyle = 'rgba(41,240,255,.12)'; x.fillRect(bx + 20, by + 124, bw - 40, 8);
     x.fillStyle = done ? '#3dff8a' : '#29f0ff'; x.fillRect(bx + 20, by + 124, (bw - 40) * Math.min(1, tr.count / L.need), 8);
   }
   if (done) A.glitchText('NICE', W / 2, 330, 64, now, '#3dff8a', '900', A.HEAVY, 0.4);
-  A.text(tr.finished ? 'ENTER  CONTINUE     ESC  MENU' : 'ENTER  SKIP STEP     ESC  MENU', W / 2, by + bh + 20, 11, '#7d8590', A.MONO, 'bold', 'center', 1, 4);
+  A.text(touchMode ? (tr.finished ? 'TAP TO CONTINUE' : 'TAP THE PANEL TO SKIP') : tr.finished ? 'ENTER  CONTINUE     ESC  MENU' : 'ENTER  SKIP STEP     ESC  MENU', W / 2, by + bh + 20, 11, '#7d8590', A.MONO, 'bold', 'center', 1, 4);
 }

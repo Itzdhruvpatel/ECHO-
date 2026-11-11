@@ -3,6 +3,7 @@
 
 import * as A from './art.ts';
 import { FIGHTERS, ROSTER } from '../core/data.ts';
+import { touchMode } from '../input.ts';
 
 export type Hot = (x: number, y: number, w: number, h: number, onClick: () => void) => boolean;
 const { W, H } = A;
@@ -89,7 +90,7 @@ export function drawMenu(t: number, sel: number, pressed: boolean, e: EchoInfo, 
   A.rain(t, 120, 0.15);
   if (!pressed) {
     hot(0, 0, W, H, () => choose(-1));
-    if (Math.floor(t * 4) % 2 === 0) A.glitchText('PRESS START', W / 2, H / 2, 64, t, '#fff', '900', A.HEAVY, 0.4);
+    if (Math.floor(t * 4) % 2 === 0) A.glitchText((touchMode ? 'TAP TO START' : 'PRESS START'), W / 2, H / 2, 64, t, '#fff', '900', A.HEAVY, 0.4);
     A.post(t, A.seg(t, 0, 0.2));
     return;
   }
@@ -111,7 +112,7 @@ export function drawMenu(t: number, sel: number, pressed: boolean, e: EchoInfo, 
   x.strokeStyle = 'rgba(41,240,255,.5)'; x.lineWidth = 1; x.strokeRect(640, 440, 560, 170);
   A.text(d.name, 664, 474, 26, '#fff', A.HEAVY, '900', 'left');
   A.text(d.desc, 664, 512, 17, '#bfe9ff', A.COND, 'bold', 'left');
-  const hint = en ? 'W / S  SELECT     ENTER  CONFIRM     F  FULLSCREEN' : 'NOT IN THIS BUILD YET';
+  const hint = en ? (touchMode ? 'TAP TO CHOOSE' : 'W / S  SELECT     ENTER  CONFIRM     F  FULLSCREEN') : 'NOT IN THIS BUILD YET';
   A.text(hint, 664, 548, 12, en ? '#7d8590' : '#ff6b7d', A.MONO, 'bold', 'left', 1, 2);
   A.text(echoLine(e), 664, 586, 12, '#29f0ff', A.MONO, 'bold', 'left', 1, 2);
   A.post(t);
@@ -163,7 +164,7 @@ export function drawLab(t: number, e: EchoInfo, hot: Hot, fight: () => void) {
     const hover = hot(950, 636, 250, 54, fight);
     A.button(1075, 663, 250, 54, 'FIGHT YOUR ECHO', true, hover, false, t);
   }
-  A.text('ESC  BACK', 80, 663, 13, '#7d8590', A.MONO, 'bold', 'left', 1, 4);
+  if (!touchMode) A.text('ESC  BACK', 80, 663, 13, '#7d8590', A.MONO, 'bold', 'left', 1, 4);
   A.post(t);
 }
 
@@ -192,7 +193,7 @@ export function drawSummit(t: number, id: string, lines: string[], note: string 
   });
   if (t > 3.2) A.glitchText('"I AM THE ORIGINAL."', 1220, 345, 30, t, '#ffffff', '900', A.HEAVY, 0.4, 'right');
   if (note) A.text(note, W / 2, 690, 13, '#29f0ff', A.MONO, 'bold', 'center', 1, 4);
-  else if (t > 3.6) A.text('PRESS ENTER', W / 2, 690, 12, '#8a949d', A.MONO, 'bold', 'center', Math.floor(t * 2) % 2 ? 1 : 0.4, 4);
+  else if (t > 3.6) A.text((touchMode ? 'TAP TO FIGHT' : 'PRESS ENTER'), W / 2, 690, 12, '#8a949d', A.MONO, 'bold', 'center', Math.floor(t * 2) % 2 ? 1 : 0.4, 4);
   A.post(t, A.seg(t, 0, 0.2));
 }
 
@@ -246,7 +247,7 @@ export function drawSelect(t: number, sel: number, who: string, taken: number, h
   });
   const playable = ROSTER[sel];
   A.text(playable ? FIGHTERS[playable].moveList : `COMING IN VERSION ${r.ver}`, 470, 664, 11, playable ? r.col : '#7d8590', A.MONO, 'bold', 'left');
-  A.text('A / D  BROWSE     ENTER  FIGHT     ESC  BACK', W / 2, 706, 12, '#5c636b', A.MONO, 'bold', 'center', 1, 4);
+  A.text((touchMode ? 'TAP A FIGHTER' : 'A / D  BROWSE     ENTER  FIGHT     ESC  BACK'), W / 2, 706, 12, '#5c636b', A.MONO, 'bold', 'center', 1, 4);
   A.post(t);
 }
 
@@ -271,10 +272,18 @@ export function drawSettings(t: number, sel: number, s: Settings, confirmReset: 
     if (on) { x.fillStyle = 'rgba(255,42,68,.25)'; x.fillRect(60, y - 30, 760, 60); x.fillStyle = '#ff2a44'; x.fillRect(60, y - 30, 5, 60); }
     A.text(row.name, 84, y - 4, 26, on ? '#fff' : '#8a9199', A.HEAVY, '900', 'left');
     A.text(row.help, 84, y + 20, 12, '#5c636b', A.MONO, 'bold', 'left', 1, 1);
-    if (row.key === 'reset') A.text(confirmReset ? 'PRESS ENTER AGAIN TO DELETE' : 'ENTER', 800, y, 16, confirmReset ? '#ff2a44' : '#7d8590', A.MONO, 'bold', 'right', 1, 2);
+    if (row.key === 'reset') A.text(confirmReset ? (touchMode ? 'TAP AGAIN TO DELETE' : 'PRESS ENTER AGAIN TO DELETE') : (touchMode ? 'TAP' : 'ENTER'), 800, y, 16, confirmReset ? '#ff2a44' : '#7d8590', A.MONO, 'bold', 'right', 1, 2);
     else A.text(`<  ${s[row.key]}  >`, 800, y, 20, on ? '#29f0ff' : '#5c636b', A.MONO, 'bold', 'right', 1, 2);
   });
-  A.text('W / S  SELECT     A / D  CHANGE     ESC  BACK', 80, 660, 13, '#7d8590', A.MONO, 'bold', 'left', 1, 4);
+  A.text((touchMode ? 'TAP A ROW TO CHANGE IT' : 'W / S  SELECT     A / D  CHANGE     ESC  BACK'), 80, 660, 13, '#7d8590', A.MONO, 'bold', 'left', 1, 4);
   A.post(t);
 }
 
+
+// Touch screens have no Escape key: a BACK button in the top right corner.
+export function backButton(hot: Hot, fn: () => void) {
+  const x = A.x, on = hot(W - 170, 16, 150, 46, fn);
+  x.fillStyle = on ? 'rgba(255,42,68,.35)' : 'rgba(0,0,0,.6)'; x.strokeStyle = '#ff2a44'; x.lineWidth = 2;
+  x.beginPath(); x.roundRect(W - 170, 16, 150, 46, 4); x.fill(); x.stroke();
+  A.text('BACK', W - 95, 40, 16, '#fff', A.HEAVY, '900', 'center', 1, 3);
+}

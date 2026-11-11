@@ -4,6 +4,7 @@
 
 import * as A from './art.ts';
 import { FIGHTERS, MOVES } from '../core/data.ts';
+import { touchMode } from '../input.ts';
 import { DOWN_FRAMES, FINISH_FRAMES, hitbox, hurtbox, type Fighter, type Sim, type SimEvent } from '../core/sim.ts';
 
 const GY = 640, SCALE = 1.3;
@@ -437,8 +438,8 @@ function banners(s: Sim, t: number) {
     if (f < 60) A.glitchText(`ROUND ${s.round}`, W / 2, 300, 96 * A.lerp(1.4, 1, A.eOut(Math.min(1, f / 15))), t, '#fff', '900', A.HEAVY, 0.5);
     else A.glitchText('FIGHT', W / 2, 300, 140 * A.lerp(1.6, 1, A.eOut(Math.min(1, (f - 60) / 10))), t, '#ff2a44', '900', A.HEAVY, 0.8);
     if (s.round === 1) {
-      A.text('WASD MOVE   U I J K ATTACK   U+J THROW   O SPECIAL   L / SPACE BLOCK', W / 2, 420, 14, '#bfe9ff', A.MONO, 'bold', 'center', 1, 2);
-      A.text('P SUPER POWER (1 BAR)   ;  OVERCLOCK (3 BARS)   H HITBOXES   ESC MENU', W / 2, 446, 14, '#ffb15a', A.MONO, 'bold', 'center', 1, 2);
+      if (!touchMode) A.text('WASD MOVE   U I J K ATTACK   U+J THROW   O SPECIAL   L / SPACE BLOCK', W / 2, 420, 14, '#bfe9ff', A.MONO, 'bold', 'center', 1, 2);
+      if (!touchMode) A.text('P SUPER POWER (1 BAR)   ;  OVERCLOCK (3 BARS)   H HITBOXES   ESC MENU', W / 2, 446, 14, '#ffb15a', A.MONO, 'bold', 'center', 1, 2);
     }
   } else if (s.phase === 'outro' && s.lastBreath && f < LB_FRAMES) {
     const name = FIGHTERS[s.f[s.roundWinner].id].lastBreath, a = Math.min(1, f / 12);
@@ -456,13 +457,13 @@ function banners(s: Sim, t: number) {
     A.glitchText('DELETE THEM', W / 2, 250, 120 * A.lerp(1.5, 1, A.eOut(a)), t, fl ? '#ff2a44' : '#ffffff', '900', A.HEAVY, 0.9);
     if (s.roundWinner === 0) {
       // key chips light up as the input is entered
-      const x = A.x, keys = ['S', 'S', 'O'];
+      const x = A.x, keys = touchMode ? ['DOWN', 'DOWN', 'SP'] : ['S', 'S', 'O'];
       keys.forEach((k, i) => {
         const cx = W / 2 - 90 + i * 90, cy = 370, done = s.finStep > i;
         x.save(); x.fillStyle = done ? '#ff2a44' : 'rgba(0,0,0,.6)'; x.strokeStyle = done ? '#fff' : '#ff2a44'; x.lineWidth = 3;
         if (!done && Math.floor(t * 4) % 2) A.glow('#ff2a44', 16);
         x.fillRect(cx - 32, cy - 32, 64, 64); x.strokeRect(cx - 32, cy - 32, 64, 64); x.restore();
-        A.text(k, cx, cy + 2, 34, '#fff', A.HEAVY, '900');
+        A.text(k, cx, cy + 2, k.length > 1 ? 16 : 34, '#fff', A.HEAVY, '900');
       });
       A.text('DOWN  DOWN  SPECIAL', W / 2, 432, 14, '#ffb15a', A.MONO, 'bold', 'center', 1, 6);
       A.x.fillStyle = 'rgba(255,42,68,.25)'; A.x.fillRect(W / 2 - 150, 452, 300, 6);

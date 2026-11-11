@@ -15,7 +15,7 @@
   <style>
     html, body { margin: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
     /* the game is 16:9: fill the window and letterbox the rest */
-    canvas { display: block; width: 100vw; height: 100vh; height: 100dvh; object-fit: contain; touch-action: none; user-select: none; -webkit-user-select: none; }
+    canvas { display: block; width: 100vw; height: 100vh; height: 100dvh; object-fit: contain; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
     #rotate { display: none; position: fixed; inset: 0; background: #05060a; color: #29f0ff; font: bold 16px Consolas, monospace; letter-spacing: 4px; align-items: center; justify-content: center; text-align: center; }
     @media (orientation: portrait) and (pointer: coarse) { #rotate { display: flex; } }
     #trailer { display: none; position: fixed; inset: 0; background: #000; }

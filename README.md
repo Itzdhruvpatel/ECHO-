@@ -11,6 +11,14 @@ npm run dev
 
 Open http://localhost:5173. Keyboard works best; a PC or laptop is recommended. `npm run build` makes an installable app in `dist/` that also plays offline.
 
+### On your phone
+
+```bash
+npm run phone
+```
+
+Open the Network address it prints (like `http://192.168.1.5:5173`) on a phone on the same Wi-Fi, then turn the phone sideways. On Android, START GAME goes fullscreen. On iPhone, use Share, then Add to Home Screen, to play without the browser bars. Phones start on LOW graphics, which you can change in Settings.
+
 ## Controls
 
 | Key | Action |
