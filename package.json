@@ -6,9 +6,10 @@
   "scripts": {
     "dev": "vite",
     "phone": "vite --host",
-    "build": "tsc && vite build",
+    "build": "tsc && vite build --base=./",
     "preview": "vite preview",
     "balance": "node scripts/balance.ts",
+    "deploy": "node scripts/deploy.mjs",
     "test": "node src/core/determinism.test.ts && node src/core/strings.test.ts && node src/core/features.test.ts && node src/echo/taunts.test.ts && node src/core/fuzz.test.ts"
   },
   "devDependencies": {

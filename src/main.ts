@@ -427,4 +427,4 @@ function frame(ms: number) {
 requestAnimationFrame(frame);
 
 // installable app: cache the game for offline play (production builds only)
-if (import.meta.env.PROD && 'serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+if (import.meta.env.PROD && 'serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});

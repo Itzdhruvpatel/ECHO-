@@ -11,7 +11,11 @@ npm run dev
 
 Open http://localhost:5173. Keyboard works best; a PC or laptop is recommended. `npm run build` makes an installable app in `dist/` that also plays offline.
 
-### On your phone
+### Play online
+
+https://itzdhruvpatel.github.io/ECHO-/ works on PC and phone. `npm run deploy` publishes a new build there.
+
+### On your phone (local network)
 
 ```bash
 npm run phone
