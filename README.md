@@ -39,7 +39,7 @@ Open the Network address it prints (like `http://192.168.1.5:5173`) on a phone o
 | M | Mute |
 | F | Fullscreen |
 
-Player 2 in Versus uses the arrow keys and the number pad (7 8 4 5 attacks, 0 block, 9 special, 6 super power, 3 Overclock). Gamepads work for both players: X Y A B attack, RB blocks, RT special, LB super power, LT Overclock. On a phone, turn it sideways and use the on-screen pad.
+Player 2 in Versus uses the arrow keys and the number pad (7 8 4 5 attacks, 0 block, 9 special, 6 super power, 3 Overclock). Gamepads work for both players: X Y A B attack, RB blocks, RT special, LB super power, LT Overclock. On a phone, turn it sideways and use the on-screen pad. The joystick appears wherever your thumb lands on the left side. Settings > Touch Controls sets stick sensitivity, button size and visibility, and lets you drag every button where you want it.
 
 The first Arcade run starts with a tutorial that walks you through every control. You can replay it from the menu, or use Practice for a dummy that never dies.
 

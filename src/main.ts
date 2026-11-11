@@ -59,7 +59,7 @@ const trailerOpen = () => trailerBox.style.display === 'block';
 
 // ---------- state ----------
 type Screen = 'landing' | 'menu' | 'select' | 'summit' | 'lab' | 'fight' | 'train' | 'settings'
-  | 'opening' | 'card' | 'twist' | 'archive' | 'choice' | 'ending' | 'fallen';
+  | 'controls' | 'opening' | 'card' | 'twist' | 'archive' | 'choice' | 'ending' | 'fallen';
 let screenNow: Screen = 'landing', screenT0 = 0, now = 0;
 let menuSel = 0, selIdx = 0, setSel = 0, confirmReset = false, debug = false, pressStart = false, choice = 0;
 let paused = false, pauseSel = 0;
@@ -197,6 +197,7 @@ const pickEnding = (i: number) => { choice = i; go('ending'); };
 function changeSetting(row: number, dir: number) {
   setSel = row;
   const r = SETTING_ROWS[row];
+  if (r.key === 'controls') { go('controls'); return; }
   if (r.key === 'reset') {
     if (!confirmReset) { confirmReset = true; return; }
     confirmReset = false;
@@ -258,11 +259,12 @@ function handleKey(code: string) {
       if (up) setSel = (setSel + SETTING_ROWS.length - 1) % SETTING_ROWS.length;
       if (down) setSel = (setSel + 1) % SETTING_ROWS.length;
       if (left) changeSetting(setSel, -1);
-      if (right || (ok && SETTING_ROWS[setSel].key === 'reset')) changeSetting(setSel, 1);
+      if (right || (ok && (SETTING_ROWS[setSel].key === 'reset' || SETTING_ROWS[setSel].key === 'controls'))) changeSetting(setSel, 1);
       if (back) go('menu');
       break;
     case 'summit': if (ok || code === 'Space') leaveSummit(); if (back) go('menu'); break;
     case 'lab': if (ok && status.ready) labFight(); if (back) go('menu'); break;
+    case 'controls': if (back || ok) go('settings'); break;
     case 'choice': if (left || right) choice = 1 - choice; if (ok) pickEnding(choice); break;
     case 'ending': if (ok && now - screenT0 > 5) go('menu'); break;
     case 'fallen': if (ok) enterFloor(); if (back) go('menu'); break;
@@ -302,17 +304,22 @@ function toCanvas(e: PointerEvent) {
 }
 canvas.addEventListener('pointermove', e => {
   mouse = toCanvas(e);
-  if (e.pointerType === 'touch') input.touchMove(e.pointerId, mouse.x, mouse.y);
+  if (screenNow === 'controls') input.editorMove(e.pointerId, mouse.x, mouse.y);
+  else if (e.pointerType === 'touch') input.touchMove(e.pointerId, mouse.x, mouse.y);
 });
 canvas.addEventListener('pointerdown', e => {
   unlockAudio();
   const p = toCanvas(e);
+  // last registered wins: it was drawn on top
+  const h = hots.findLast(r => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h);
+  if (screenNow === 'controls') { if (h) h.fn(); else input.editorDown(e.pointerId, p.x, p.y); return; }
   if (e.pointerType === 'touch') input.touchStart(e.pointerId, p.x, p.y);
   if (screenNow === 'landing') enterFullscreen();
-  // last registered wins: it was drawn on top
-  hots.findLast(r => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h)?.fn();
+  h?.fn();
 });
-for (const ev of ['pointerup', 'pointercancel', 'pointerleave'] as const) canvas.addEventListener(ev, e => input.touchEnd(e.pointerId));
+for (const ev of ['pointerup', 'pointercancel', 'pointerleave'] as const) {
+  canvas.addEventListener(ev, e => { if (screenNow === 'controls') input.editorUp(e.pointerId); else input.touchEnd(e.pointerId); });
+}
 const hot: Hot = (x, y, w, h, fn) => {
   hots.push({ x, y, w, h, fn });
   return mouse.x >= x && mouse.x <= x + w && mouse.y >= y && mouse.y <= y + h;
@@ -380,6 +387,7 @@ function frame(ms: number) {
     case 'menu': drawMenu(t, menuSel, pressStart, echoInfo(), hot, chooseMenu); break;
     case 'select': drawSelect(t, selIdx, mode === 'versus' ? (selFor === 'p2' ? 'PLAYER 2' : 'PLAYER 1') : '', mode === 'versus' && selFor === 'p2' ? ROSTER.indexOf(player) : -1, hot, pickFighter); break;
     case 'settings': drawSettings(t, setSel, settings, confirmReset, hot, changeSetting); break;
+    case 'controls': input.drawEditor(t, hot, () => go('settings')); break;
     case 'lab': drawLab(t, echoInfo(), hot, labFight); break;
     case 'summit': drawSummit(t, player, hab?.lines ?? [], summitNote(), hot, leaveSummit); break;
     case 'opening': story.drawOpening(t); break;

@@ -258,6 +258,7 @@ export const SETTING_ROWS = [
   { key: 'sound', name: 'SOUND', opts: ['ON', 'OFF'], help: 'M also mutes during play.' },
   { key: 'difficulty', name: 'CPU DIFFICULTY', opts: ['EASY', 'NORMAL', 'HARD'], help: 'How fast the Spire CPUs react and block.' },
   { key: 'fullscreen', name: 'FULLSCREEN', opts: ['ON', 'OFF'], help: 'F toggles it anywhere.' },
+  { key: 'controls', name: 'TOUCH CONTROLS', opts: [], help: 'Joystick sensitivity, button size, and drag buttons where you want them.' },
   { key: 'reset', name: 'RESET ECHO DATA', opts: [], help: 'Deletes every recorded fight and the trained Echo.' },
 ] as const;
 
@@ -272,7 +273,8 @@ export function drawSettings(t: number, sel: number, s: Settings, confirmReset: 
     if (on) { x.fillStyle = 'rgba(255,42,68,.25)'; x.fillRect(60, y - 30, 760, 60); x.fillStyle = '#ff2a44'; x.fillRect(60, y - 30, 5, 60); }
     A.text(row.name, 84, y - 4, 26, on ? '#fff' : '#8a9199', A.HEAVY, '900', 'left');
     A.text(row.help, 84, y + 20, 12, '#5c636b', A.MONO, 'bold', 'left', 1, 1);
-    if (row.key === 'reset') A.text(confirmReset ? (touchMode ? 'TAP AGAIN TO DELETE' : 'PRESS ENTER AGAIN TO DELETE') : (touchMode ? 'TAP' : 'ENTER'), 800, y, 16, confirmReset ? '#ff2a44' : '#7d8590', A.MONO, 'bold', 'right', 1, 2);
+    if (row.key === 'controls') A.text(touchMode ? 'TAP TO EDIT' : 'ENTER TO EDIT', 800, y, 16, '#29f0ff', A.MONO, 'bold', 'right', 1, 2);
+    else if (row.key === 'reset') A.text(confirmReset ? (touchMode ? 'TAP AGAIN TO DELETE' : 'PRESS ENTER AGAIN TO DELETE') : (touchMode ? 'TAP' : 'ENTER'), 800, y, 16, confirmReset ? '#ff2a44' : '#7d8590', A.MONO, 'bold', 'right', 1, 2);
     else A.text(`<  ${s[row.key]}  >`, 800, y, 20, on ? '#29f0ff' : '#5c636b', A.MONO, 'bold', 'right', 1, 2);
   });
   A.text((touchMode ? 'TAP A ROW TO CHANGE IT' : 'W / S  SELECT     A / D  CHANGE     ESC  BACK'), 80, 660, 13, '#7d8590', A.MONO, 'bold', 'left', 1, 4);
