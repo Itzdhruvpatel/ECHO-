@@ -62,6 +62,23 @@ for (const [press, want] of [[B.SPECIAL, true], [B.BP, false]] as [number, boole
 }
 console.log('ok  Last Breath only on a special K.O.');
 
+// Same move, same frame, in range of each other: both get hit (a trade).
+{
+  const s = fightReady('kaal', 'kaal');
+  s.f[0].x = 600; s.f[1].x = 680;
+  for (let t = 0; t < 30; t++) step(s, [t < 2 ? B.FP : 0, t < 2 ? B.FP : 0]);
+  assert.ok(s.f[0].hp < s.f[0].maxHp && s.f[1].hp < s.f[1].maxHp, `trade should hurt both: ${s.f[0].hp} ${s.f[1].hp}`);
+  console.log('ok  same-frame hits trade');
+}
+
+// Rounds that keep timing out in a draw still end the match.
+{
+  const s = fightReady('rook', 'rook');
+  for (let t = 0; t < 99 * 60 * 8 && s.phase !== 'over'; t++) step(s, [0, 0]);
+  assert.equal(s.phase, 'over', `draws never ended (round ${s.round})`);
+  console.log('ok  endless draws are capped');
+}
+
 // A player who wins by K.O. and enters nothing still gets their Deletion.
 {
   const s = fightReady('kaal', 'rook');

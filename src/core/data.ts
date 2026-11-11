@@ -35,9 +35,9 @@ export const MOVES: Record<string, MoveData> = {
   bk: { name: 'Sweep', pose: 'sweep', startup: 10, active: 4, recovery: 22, dmg: 50, level: 'low', hitstun: 22, blockstun: 12, hitstop: 7, x0: 20, x1: 145, y0: 0, y1: 60, kd: true, pow: 0.9 },
   jk: { name: 'Jump Kick', pose: 'kick', startup: 5, active: 8, recovery: 6, dmg: 60, level: 'mid', hitstun: 20, blockstun: 12, hitstop: 7, x0: 10, x1: 120, y0: 20, y1: 150, pow: 1 },
   throw: { name: 'Throw', pose: 'punch', startup: 5, active: 2, recovery: 25, dmg: 110, level: 'throw', hitstun: 0, blockstun: 0, hitstop: 10, x0: 0, x1: 95, y0: 60, y1: 200, kd: true, pow: 1.2 },
-  coil: { name: 'Coil Lash', pose: 'whip', startup: 14, active: 5, recovery: 24, dmg: 90, level: 'mid', hitstun: 26, blockstun: 16, hitstop: 10, x0: 60, x1: 330, y0: 60, y1: 200, pow: 1.2 },
+  coil: { name: 'Coil Lash', pose: 'whip', startup: 14, active: 5, recovery: 30, dmg: 80, level: 'mid', hitstun: 26, blockstun: 16, hitstop: 10, x0: 60, x1: 330, y0: 60, y1: 200, pow: 1.2 },
   lunge: { name: 'Shadow Lunge', pose: 'punch', startup: 7, active: 10, recovery: 18, dmg: 80, level: 'mid', hitstun: 22, blockstun: 14, hitstop: 9, x0: 10, x1: 110, y0: 100, y1: 210, lunge: 16, pow: 1.1 },
-  slam: { name: 'Ground Breaker', pose: 'whip', wind: 'raise', startup: 22, active: 4, recovery: 26, dmg: 130, level: 'mid', hitstun: 30, blockstun: 20, hitstop: 14, x0: 40, x1: 200, y0: 0, y1: 160, kd: true, push: 9, pow: 1.7 },
+  slam: { name: 'Ground Breaker', pose: 'whip', wind: 'raise', startup: 18, active: 4, recovery: 26, dmg: 130, level: 'mid', hitstun: 30, blockstun: 20, hitstop: 14, x0: 40, x1: 200, y0: 0, y1: 160, kd: true, push: 9, pow: 1.7 },
 
   // string follow-ups
   fp2: { name: 'Second Jab', pose: 'upper', startup: 6, active: 3, recovery: 12, dmg: 40, level: 'mid', hitstun: 18, blockstun: 10, hitstop: 6, x0: 10, x1: 110, y0: 120, y1: 220, pow: 0.8 },
@@ -62,6 +62,7 @@ export interface FighterData {
   name: string;
   hp: number;
   walk: number;
+  dmgScale: number; // multiplies all damage this fighter deals (balance knob)
   dash: number;
   special: string;
   overclock: string;
@@ -78,17 +79,17 @@ export interface FighterData {
 
 export const FIGHTERS: Record<FighterId, FighterData> = {
   kaal: {
-    name: 'KAAL', hp: 1000, walk: 4.2, dash: 12, special: 'coil', overclock: 'oc_coils', deletion: "KAAL'S LOOP", lastBreath: 'MONSOON CUT', weapon: 'urumi', color: '#ff8a1f', weaponName: 'URUMI WHIP SWORD', power: 'REWIND', style: 'BALANCED, LONG REACH',
+    name: 'KAAL', hp: 1000, dmgScale: 1, walk: 4.2, dash: 12, special: 'coil', overclock: 'oc_coils', deletion: "KAAL'S LOOP", lastBreath: 'MONSOON CUT', weapon: 'urumi', color: '#ff8a1f', weaponName: 'URUMI WHIP SWORD', power: 'REWIND', style: 'BALANCED, LONG REACH',
     chains: { fp: { FP: 'fp2' }, fp2: { BP: 'k_monsoon' }, fk: { BK: 'k_undertow' } },
     moveList: 'U U I  RIPTIDE  //  J K  UNDERTOW  //  O  COIL LASH  //  P  REWIND  //  ;  THOUSAND COILS',
   },
   vanta: {
-    name: 'VANTA', hp: 900, walk: 5.4, dash: 15, special: 'lunge', overclock: 'oc_nightshift', deletion: 'FACELESS', lastBreath: 'CROSS OUT', weapon: 'kukri', color: '#a45cff', weaponName: 'TWIN KUKRIS', power: 'SHADOW PHASE', style: 'RUSHDOWN',
+    name: 'VANTA', hp: 900, dmgScale: 0.95, walk: 5.4, dash: 15, special: 'lunge', overclock: 'oc_nightshift', deletion: 'FACELESS', lastBreath: 'CROSS OUT', weapon: 'kukri', color: '#a45cff', weaponName: 'TWIN KUKRIS', power: 'SHADOW PHASE', style: 'RUSHDOWN',
     chains: { fp: { BP: 'bp' }, bp: { FK: 'v_flurry', BP: 'v_nightcut' } },
     moveList: 'U I J  SHADE FLURRY  //  I I  NIGHT CUT  //  O  SHADOW LUNGE  //  P  SHADOW PHASE  //  ;  NIGHT SHIFT',
   },
   rook: {
-    name: 'ROOK', hp: 1150, walk: 3.3, dash: 9, special: 'slam', overclock: 'oc_demolition', deletion: 'FOUNDATION', lastBreath: 'PILE DRIVER', weapon: 'hammer', color: '#ff4d2e', weaponName: 'HYDRAULIC HAMMER', power: 'IRON WILL', style: 'HEAVY GRAPPLER',
+    name: 'ROOK', hp: 1250, dmgScale: 1.25, walk: 3.9, dash: 11, special: 'slam', overclock: 'oc_demolition', deletion: 'FOUNDATION', lastBreath: 'PILE DRIVER', weapon: 'hammer', color: '#ff4d2e', weaponName: 'HYDRAULIC HAMMER', power: 'IRON WILL', style: 'HEAVY GRAPPLER',
     chains: { bp: { FP: 'r_piledriver' }, fk: { FK: 'r_breakwater' } },
     moveList: 'I U  WRECKING BALL  //  J J  BREAKWATER  //  O  GROUND BREAKER  //  P  IRON WILL  //  ;  DEMOLITION ORDER',
   },

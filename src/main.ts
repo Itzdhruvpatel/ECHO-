@@ -3,7 +3,7 @@
 import * as A from './render/art.ts';
 import { drawFight, fxEvents, resetFx, timeScale } from './render/fight.ts';
 import {
-  backButton, drawLab, drawLanding, drawMenu, drawSelect, drawSettings, drawSummit, CARDS, MENU, SETTING_ROWS, menuOn,
+  backButton, drawLab, drawPause, PAUSE_ITEMS, drawLanding, drawMenu, drawSelect, drawSettings, drawSummit, CARDS, MENU, SETTING_ROWS, menuOn,
   type EchoInfo, type Hot, type Settings,
 } from './render/screens.ts';
 import * as story from './render/story.ts';
@@ -62,13 +62,22 @@ type Screen = 'landing' | 'menu' | 'select' | 'summit' | 'lab' | 'fight' | 'trai
   | 'opening' | 'card' | 'twist' | 'archive' | 'choice' | 'ending' | 'fallen';
 let screenNow: Screen = 'landing', screenT0 = 0, now = 0;
 let menuSel = 0, selIdx = 0, setSel = 0, confirmReset = false, debug = false, pressStart = false, choice = 0;
+let paused = false, pauseSel = 0;
 let mode: 'tower' | 'echo' | 'versus' = 'tower';
 let selFor: 'p1' | 'p2' | 'train' | 'practice' = 'p1';
 let taunter: Taunter | null = null;
 let sim: Sim | null = null, cpu: Cpu | null = null, brain: EchoBrain | null = null, rec: Recorder | null = null, trainer: Trainer | null = null;
 let player: FighterId = 'kaal', player2: FighterId = 'rook', acc = 0, saved = false, towerAfterTutorial = false;
 
-function go(s: Screen) { screenNow = s; screenT0 = now; confirmReset = false; }
+function go(s: Screen) { screenNow = s; screenT0 = now; confirmReset = false; paused = false; }
+
+function autoPause() { if ((screenNow === 'fight' && sim?.phase !== 'over') || screenNow === 'train') { paused = true; pauseSel = 0; } }
+function choosePause(i: number) {
+  pauseSel = i;
+  paused = false;
+  if (i === 1) { if (screenNow === 'train' && trainer) startTrainer(trainer.lessonsOn); else startFight(); }
+  if (i === 2) go('menu');
+}
 
 // ---------- the Spire ----------
 interface Floor { fl: number; opp?: FighterId; delay: number; skill: number; temple?: boolean; twist?: boolean; echo?: boolean }
@@ -221,6 +230,13 @@ function handleKey(code: string) {
   const ok = code === 'Enter' || code === 'PadStart' || (!inFight && (code === 'KeyU' || code === 'PadA'));
   const back = code === 'Escape' || code === 'PadSelect' || (!inFight && code === 'PadB');
   if (!inFight && (up || down || left || right || ok || back)) play('ui');
+  if (paused) {
+    if (up) pauseSel = (pauseSel + PAUSE_ITEMS.length - 1) % PAUSE_ITEMS.length;
+    if (down) pauseSel = (pauseSel + 1) % PAUSE_ITEMS.length;
+    if (ok || code === 'KeyU' || code === 'PadA') choosePause(pauseSel);
+    else if (back || code === 'PadB') paused = false;
+    return;
+  }
   const timed = TIMED[screenNow];
   if (timed) { if (ok || code === 'Space') timed[1](); if (back) go('menu'); return; }
   switch (screenNow) {
@@ -251,13 +267,13 @@ function handleKey(code: string) {
     case 'ending': if (ok && now - screenT0 > 5) go('menu'); break;
     case 'fallen': if (ok) enterFloor(); if (back) go('menu'); break;
     case 'train':
-      if (back) go('menu');
+      if (back) { paused = true; pauseSel = 0; }
       if (code === 'KeyH') debug = !debug;
       if (code === 'KeyT' && trainer && !trainer.lessonsOn) trainer.dummy = DUMMY[(DUMMY.indexOf(trainer.dummy) + 1) % DUMMY.length];
       if (code === 'Enter' && trainer?.lessonsOn) { if (trainer.finished) finishTutorial(); else trainer.next(); }
       break;
     case 'fight':
-      if (back) go('menu');
+      if (back) { paused = true; pauseSel = 0; }
       if (code === 'KeyH') debug = !debug;
       if (ok && sim?.phase === 'over') afterFight();
       break;
@@ -271,7 +287,8 @@ addEventListener('keydown', e => {
   handleKey(e.code);
 });
 addEventListener('keyup', e => input.keyUp(e.code));
-addEventListener('blur', () => input.clearKeys());
+addEventListener('blur', () => { input.clearKeys(); autoPause(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) autoPause(); });
 // no long-press menu or text selection on touch screens
 addEventListener('contextmenu', e => e.preventDefault());
 
@@ -303,8 +320,8 @@ const hot: Hot = (x, y, w, h, fn) => {
 // on touch screens the fight gets a small menu button and tap-to-continue
 function touchExtras() {
   if (!input.touchMode) return;
-  hot(560, 650, 160, 50, () => go('menu'));
-  A.text('MENU', 640, 676, 13, '#7d8590', A.MONO, 'bold', 'center', 1, 4);
+  hot(560, 650, 160, 50, () => { paused = true; pauseSel = 0; });
+  A.text('PAUSE', 640, 676, 13, '#7d8590', A.MONO, 'bold', 'center', 1, 4);
 }
 
 // ---------- the loop ----------
@@ -375,6 +392,7 @@ function frame(ms: number) {
     case 'train':
       if (!trainer) break;
       acc += dt;
+      if (paused) acc = 0;
       while (acc >= 1 / 60) { acc -= 1 / 60; const p = input.bitsFor(0); const s = trainer.s, ph = s.phase; const ev = trainer.update(p, now); fxEvents(ev, trainer.s, now); sounds(trainer.s, ev, ph); }
       drawFight(trainer.s, now, { debug, names: ['YOU', 'DUMMY'] });
       drawTrainer(trainer, now);
@@ -386,6 +404,7 @@ function frame(ms: number) {
     case 'fight':
       if (!sim) break;
       acc += dt * timeScale(now);
+      if (paused) acc = 0;
       while (acc >= 1 / 60) { acc -= 1 / 60; fightTick(sim); }
       if (sim.phase === 'over') hot(0, 0, A.W, A.H, afterFight);
       drawFight(sim, now, {
@@ -399,7 +418,8 @@ function frame(ms: number) {
       if (sim.phase !== 'over') touchExtras();
       break;
   }
-  if (screenNow === 'fight' || screenNow === 'train') input.drawTouchPad();
+  if ((screenNow === 'fight' || screenNow === 'train') && !paused) input.drawTouchPad();
+  if (paused) drawPause(now - screenT0, pauseSel, hot, choosePause);
   if (input.touchMode && ['select', 'lab', 'settings', 'summit', 'fallen'].includes(screenNow)) backButton(hot, () => { if (screenNow === 'select' && selFor === 'p2') selFor = 'p1'; else go('menu'); });
   canvas.style.cursor = hots.some(r => mouse.x >= r.x && mouse.x <= r.x + r.w && mouse.y >= r.y && mouse.y <= r.y + r.h) ? 'pointer' : 'default';
   requestAnimationFrame(frame);

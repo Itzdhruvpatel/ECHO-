@@ -280,6 +280,22 @@ export function drawSettings(t: number, sel: number, s: Settings, confirmReset: 
 }
 
 
+export const PAUSE_ITEMS = ['RESUME', 'RESTART', 'MAIN MENU'];
+
+// Drawn over the frozen fight.
+export function drawPause(t: number, sel: number, hot: Hot, choose: (i: number) => void) {
+  const x = A.x;
+  x.fillStyle = 'rgba(2,3,8,.78)'; x.fillRect(0, 0, W, H);
+  A.glitchText('PAUSED', W / 2, 200, 90, t, '#fff', '900', A.HEAVY, 0.3);
+  PAUSE_ITEMS.forEach((name, i) => {
+    const y = 330 + i * 76, on = i === sel;
+    hot(W / 2 - 220, y - 30, 440, 60, () => choose(i));
+    if (on) { x.fillStyle = 'rgba(255,42,68,.35)'; x.fillRect(W / 2 - 220, y - 30, 440, 60); x.fillStyle = '#ff2a44'; x.fillRect(W / 2 - 220, y - 30, 5, 60); }
+    A.text(name, W / 2, y, 32, on ? '#fff' : '#7d8590', A.HEAVY, '900', 'center', 1, 4);
+  });
+  A.text(touchMode ? 'TAP AN OPTION' : 'W / S  SELECT     ENTER  CONFIRM     ESC  RESUME', W / 2, 600, 13, '#5c636b', A.MONO, 'bold', 'center', 1, 4);
+}
+
 // Touch screens have no Escape key: a BACK button in the top right corner.
 export function backButton(hot: Hot, fn: () => void) {
   const x = A.x, on = hot(W - 170, 16, 150, 46, fn);

@@ -228,13 +228,42 @@ export function hitbox(f: Fighter): Box | null {
   return { x0: Math.min(ax0, ax1), x1: Math.max(ax0, ax1), y0: f.y + m.y0, y1: f.y + m.y1 };
 }
 
-function checkHit(s: Sim, i: number, m: MoveData, ev: SimEvent[]) {
-  const a = s.f[i], d = s.f[1 - i];
-  const hb = hitbox(a), hu = hurtbox(d);
-  if (!hb || !hu) return;
-  if (hb.x1 < hu.x0 || hb.x0 > hu.x1 || hb.y1 < hu.y0 || hb.y0 > hu.y1) return;
-  if (m.level === 'throw' && d.y > 0) return; // throws whiff on airborne targets
+const overlap = (p: Box, q: Box) => !(p.x1 < q.x0 || p.x0 > q.x1 || p.y1 < q.y0 || p.y0 > q.y1);
 
+// Would fighter i's active attack connect right now? Returns the boxes if so.
+function connects(s: Sim, i: number): [Box, Box, MoveData] | null {
+  const a = s.f[i], d = s.f[1 - i];
+  if (a.state !== 'attack' || a.hasHit || !a.move) return null;
+  const m = MOVES[a.move], hb = hitbox(a), hu = hurtbox(d);
+  if (!hb || !hu || !overlap(hb, hu)) return null;
+  if (m.level === 'throw' && d.y > 0) return null; // throws whiff on airborne targets
+  if (m.level === 'throw' && d.state === 'attack') return null; // a throw loses to an active attack
+  return [hb, hu, m];
+}
+
+// Strings: a button pressed during a move's active frames or early recovery chains into the next move.
+// Runs after the hit check, so the hit on that frame still lands.
+function tryChain(f: Fighter) {
+  if (f.state !== 'attack' || !f.move) return;
+  const m = MOVES[f.move], chain = FIGHTERS[f.id].chains[f.move];
+  if (!chain || f.frame <= m.startup || f.frame > m.startup + m.active + CHAIN_WINDOW) return;
+  for (const [btn, next] of Object.entries(chain)) {
+    const bi = BTN_INDEX[btn as Btn];
+    if (pressed(f, bi)) { consume(f, bi); startMove(f, next!); return; }
+  }
+}
+
+function checkHit(s: Sim, i: number, ev: SimEvent[]) {
+  const mine = connects(s, i);
+  if (!mine) return;
+  // both hits land on the same frame: a trade, not a win for whoever updates first
+  const theirs = connects(s, 1 - i);
+  applyHit(s, i, ...mine, ev);
+  if (theirs && s.phase === 'fight') applyHit(s, 1 - i, ...theirs, ev);
+}
+
+function applyHit(s: Sim, i: number, hb: Box, hu: Box, m: MoveData, ev: SimEvent[]) {
+  const a = s.f[i], d = s.f[1 - i], dmg = m.dmg * FIGHTERS[a.id].dmgScale;
   a.hasHit = true;
   const ex = a.facing === 1 ? Math.max(hb.x0, hu.x0) : Math.min(hb.x1, hu.x1);
   const ey = (Math.max(hb.y0, hu.y0) + Math.min(hb.y1, hu.y1)) / 2;
@@ -243,7 +272,7 @@ function checkHit(s: Sim, i: number, m: MoveData, ev: SimEvent[]) {
 
   const blocking = m.level !== 'throw' && (d.state === 'block' || d.state === 'blockstun') && d.y === 0 && (m.level !== 'low' || d.crouching);
   if (blocking) {
-    d.hp -= Math.floor(m.dmg * 0.1);
+    d.hp -= Math.floor(dmg * 0.1);
     d.stun = m.blockstun;
     setState(d, 'blockstun');
     d.vx = a.facing * 5;
@@ -251,13 +280,13 @@ function checkHit(s: Sim, i: number, m: MoveData, ev: SimEvent[]) {
     ev.push({ type: 'block', who: i, x: ex, y: ey, pow: m.pow * 0.6 });
   } else if (d.armor > 0 && m.level !== 'throw') {
     // Iron Will: take the damage without flinching and turn it into meter
-    d.hp -= m.dmg;
+    d.hp -= dmg;
     d.meter = Math.min(METER_MAX, d.meter + m.dmg * 0.5);
     s.hitstop = m.hitstop;
     ev.push({ type: 'hit', who: i, x: ex, y: ey, pow: m.pow });
   } else {
     d.combo = d.state === 'hitstun' ? d.combo + 1 : 1;
-    d.hp -= Math.round(m.dmg * Math.max(0.5, 1 - 0.1 * (d.combo - 1))); // combo damage scaling
+    d.hp -= Math.round(dmg * Math.max(0.5, 1 - 0.1 * (d.combo - 1))); // combo damage scaling
     d.move = null;
     d.kd = !!m.kd || d.y > 0;
     d.stun = m.level === 'throw' ? 30 : m.hitstun;
@@ -309,14 +338,6 @@ function updateFighter(s: Sim, i: number, bits: number, ev: SimEvent[]) {
     const a1 = m.startup + m.active;
     if (m.lunge && f.frame <= a1) f.vx = m.lunge * f.facing;
     if (m.rehit && f.frame > m.startup && (f.frame - m.startup - 1) % m.rehit === 0) f.hasHit = false;
-    if (!f.hasHit) checkHit(s, i, m, ev);
-    const chain = FIGHTERS[f.id].chains[f.move!];
-    if (chain && f.state === 'attack' && f.frame > m.startup && f.frame <= a1 + CHAIN_WINDOW) {
-      for (const [btn, next] of Object.entries(chain)) {
-        const bi = BTN_INDEX[btn as Btn];
-        if (pressed(f, bi)) { consume(f, bi); startMove(f, next!); break; }
-      }
-    }
     if (f.state === 'attack' && f.frame >= a1 + m.recovery) {
       f.move = null;
       setState(f, f.y > 0 ? 'jump' : 'idle');
@@ -376,7 +397,11 @@ function endRound(s: Sim, winner: number) {
   if (winner >= 0) s.wins[winner]++;
 }
 
+export const MAX_ROUNDS = 5;
+
 function nextRound(s: Sim) {
+  // after five rounds the match ends even if drawn rounds kept anyone from reaching two wins
+  if (s.round >= MAX_ROUNDS && s.wins[0] < 2 && s.wins[1] < 2) { s.phase = 'over'; s.phaseFrame = 0; return; }
   if (s.wins[0] >= 2 || s.wins[1] >= 2) {
     const w = s.roundWinner;
     // a match won by K.O. gives the winner a short window to perform their Deletion
@@ -408,8 +433,10 @@ export function step(s: Sim, inputs: [number, number]): SimEvent[] {
     for (let i = 0; i < 2; i++) readInput(s.f[i], live ? inputs[i] : 0, true);
     return ev;
   }
-  // P1 updates first, so same-frame hits never trade yet. A resolve pass can fix that later.
+  // move both fighters first, then check both hits, so same-frame hits trade instead of favoring player 1
   for (let i = 0; i < 2; i++) updateFighter(s, i, live ? inputs[i] : 0, ev);
+  for (let i = 0; i < 2; i++) checkHit(s, i, ev);
+  for (const f of s.f) tryChain(f);
   separate(s);
   s.phaseFrame++;
   if (s.phase === 'intro' && s.phaseFrame >= INTRO_FRAMES) {

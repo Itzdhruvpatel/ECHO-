@@ -48,7 +48,7 @@ function decide(s: Sim, i: number, c: Cpu): number {
   if (me.meter >= OVERCLOCK_COST && dist < 220 && r < 0.3) return B.OVERCLOCK;
   if (me.meter >= POWER_COST && rand(c) < 0.06) {
     if (me.id === 'vanta' && dist > 200) return B.POWER;
-    if (me.id === 'rook' && dist < 260) return B.POWER;
+    if (me.id === 'rook' && dist > 180) return B.POWER; // armor up to walk through zoning
   }
   const sk = 0.5 + c.skill; // 0.5 to 1.5
   if (op.state === 'attack' && op.move && dist < 360 && r < P.block * sk) return B.BLOCK | (MOVES[op.move].level === 'low' ? B.DOWN : 0);

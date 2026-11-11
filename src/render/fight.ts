@@ -439,7 +439,7 @@ function banners(s: Sim, t: number) {
     else A.glitchText('FIGHT', W / 2, 300, 140 * A.lerp(1.6, 1, A.eOut(Math.min(1, (f - 60) / 10))), t, '#ff2a44', '900', A.HEAVY, 0.8);
     if (s.round === 1) {
       if (!touchMode) A.text('WASD MOVE   U I J K ATTACK   U+J THROW   O SPECIAL   L / SPACE BLOCK', W / 2, 420, 14, '#bfe9ff', A.MONO, 'bold', 'center', 1, 2);
-      if (!touchMode) A.text('P SUPER POWER (1 BAR)   ;  OVERCLOCK (3 BARS)   H HITBOXES   ESC MENU', W / 2, 446, 14, '#ffb15a', A.MONO, 'bold', 'center', 1, 2);
+      if (!touchMode) A.text('P SUPER POWER (1 BAR)   ;  OVERCLOCK (3 BARS)   H HITBOXES   ESC PAUSE', W / 2, 446, 14, '#ffb15a', A.MONO, 'bold', 'center', 1, 2);
     }
   } else if (s.phase === 'outro' && s.lastBreath && f < LB_FRAMES) {
     const name = FIGHTERS[s.f[s.roundWinner].id].lastBreath, a = Math.min(1, f / 12);
@@ -472,7 +472,8 @@ function banners(s: Sim, t: number) {
   } else if (s.phase === 'over') {
     A.x.fillStyle = 'rgba(0,0,0,.55)'; A.x.fillRect(0, 0, W, H);
     const won = s.wins[0] > s.wins[1];
-    A.glitchText(won ? 'YOU WIN' : 'YOU LOSE', W / 2, 290, 130, t, won ? '#ffffff' : '#ff2a44', '900', A.HEAVY, 0.6);
+    const draw = s.wins[0] === s.wins[1];
+    A.glitchText(draw ? 'DRAW' : won ? 'YOU WIN' : 'YOU LOSE', W / 2, 290, 130, t, won || draw ? '#ffffff' : '#ff2a44', '900', A.HEAVY, 0.6);
     A.text(view.overHint ?? 'ENTER  REMATCH     //     ESC  FIGHTER SELECT', W / 2, 400, 18, '#29f0ff', A.MONO, 'bold', 'center', 1, 4);
   }
 }
