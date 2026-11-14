@@ -148,7 +148,7 @@ const ENDINGS = [
   ['YOU WALK OUT OF THE SPIRE ALIVE.', 'THREE YEARS FROM NOW, YOUR ECHO MARCHES INTO THE WAR.', 'IT FIGHTS EXACTLY LIKE YOU.'],
 ];
 
-export function drawEnding(t: number, choice: number, me: FighterId) {
+export function drawEnding(t: number, choice: number, me: FighterId, unlock: FighterId | null) {
   const x = A.x, M = FIGHTERS[me];
   x.fillStyle = '#020306'; x.fillRect(0, 0, W, H);
   A.spire(W / 2, 760, 640, t, choice === 0 ? 0.35 * (1 - A.seg(t, 0, 4)) : 0.35);
@@ -160,8 +160,16 @@ export function drawEnding(t: number, choice: number, me: FighterId) {
   });
   if (t > 5.5) {
     A.glitchText('ECHO', W / 2, 470, 120 * A.lerp(1.2, 1, A.eOut(A.seg(t, 5.5, 6))), t, '#ffffff', '900', A.HEAVY, 0.4);
-    A.text('THANKS FOR PLAYING', W / 2, 560, 16, '#29f0ff', A.MONO, 'bold', 'center', A.seg(t, 6, 6.4), 6);
-    A.text((touchMode ? 'TAP FOR MAIN MENU' : 'ENTER  MAIN MENU'), W / 2, 640, 12, '#7d8590', A.MONO, 'bold', 'center', A.seg(t, 6.5, 7), 4);
+    if (unlock) {
+      // the reward for clearing the Spire: the next fighter joins the roster
+      const U = FIGHTERS[unlock], a = A.seg(t, 6, 6.4);
+      A.text('NEW FIGHTER UNLOCKED', W / 2, 545, 14, '#ffb15a', A.MONO, 'bold', 'center', a, 6);
+      x.save(); x.globalAlpha = a;
+      A.glitchText(U.name, W / 2, 590, 44, t, U.color, '900', A.HEAVY, 0.4);
+      x.restore();
+      A.drawFighter({ x: 1080, y: 700, f: -1, s: 1, p: A.mixPose(A.POSE.idle, A.POSE.raise, 0.3), look: unlock, weapon: U.weapon, wcol: U.color, dim: t < 6 }, t);
+    } else A.text('THANKS FOR PLAYING', W / 2, 560, 16, '#29f0ff', A.MONO, 'bold', 'center', A.seg(t, 6, 6.4), 6);
+    A.text((touchMode ? 'TAP FOR MAIN MENU' : 'ENTER  MAIN MENU'), W / 2, unlock ? 660 : 640, 12, '#7d8590', A.MONO, 'bold', 'center', A.seg(t, 6.5, 7), 4);
   }
   A.post(t, A.seg(t, 0, 0.6));
 }

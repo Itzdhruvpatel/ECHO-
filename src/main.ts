@@ -29,6 +29,17 @@ function load<T>(key: string, fallback: T): T {
 // phones start on LOW graphics so the fight holds 60 fps
 const settings: Settings = load('echo-settings', { graphics: input.touchMode ? 'LOW' : 'HIGH', sound: 'ON', difficulty: 'NORMAL', fullscreen: 'ON' });
 let tutorialDone = (() => { try { return localStorage.getItem('echo-tutorial') === 'done'; } catch { return false; } })();
+// how many of the later fighters the player has unlocked by clearing the Spire
+let unlocked = (() => { try { return Math.min(ROSTER.length - STARTERS, Number(localStorage.getItem('echo-unlocks') ?? 0) || 0); } catch { return 0; } })();
+let newUnlock: FighterId | null = null;
+const openCount = () => STARTERS + unlocked;
+function unlockNext() {
+  newUnlock = null;
+  if (openCount() >= ROSTER.length) return;
+  newUnlock = ROSTER[openCount()];
+  unlocked++;
+  try { localStorage.setItem('echo-unlocks', String(unlocked)); } catch { /* private mode */ }
+}
 function applySettings() {
   A.setLow(settings.graphics === 'LOW');
   setMuted(settings.sound === 'OFF');
@@ -151,7 +162,7 @@ function afterFight() {
   const won = sim!.wins[0] > sim!.wins[1];
   if (mode !== 'tower') { startFight(); return; }
   if (!won) { go('fallen'); return; }
-  if (floor().echo) { go('archive'); return; }
+  if (floor().echo) { unlockNext(); go('archive'); return; }
   floorIdx++;
   enterFloor();
 }
@@ -178,7 +189,7 @@ const chooseMenu = (i: number) => {
 
 const pickFighter = (i: number) => {
   selIdx = i;
-  if (i >= STARTERS) { play('block'); return; } // locked until the Spire unlocks it
+  if (i >= openCount()) { play('block'); return; } // locked until the Spire unlocks it
   const id = ROSTER[i];
   if (selFor === 'train') { player = id; startTrainer(true); return; }
   if (selFor === 'practice') { player = id; startTrainer(false); return; }
@@ -385,7 +396,7 @@ function frame(ms: number) {
   switch (screenNow) {
     case 'landing': drawLanding(t, hot, { start: () => go('menu'), trailer: showTrailer, nav: n => { pressStart = true; if (n === 'ECHO LAB') go('lab'); else if (n === 'STORY') showTrailer(); else if (n === 'FIGHTERS') { mode = 'tower'; selFor = 'p1'; go('select'); } else go('menu'); } }); break;
     case 'menu': drawMenu(t, menuSel, pressStart, echoInfo(), hot, chooseMenu); break;
-    case 'select': drawSelect(t, selIdx, mode === 'versus' ? (selFor === 'p2' ? 'PLAYER 2' : 'PLAYER 1') : '', mode === 'versus' && selFor === 'p2' ? ROSTER.indexOf(player) : -1, hot, pickFighter); break;
+    case 'select': drawSelect(t, selIdx, mode === 'versus' ? (selFor === 'p2' ? 'PLAYER 2' : 'PLAYER 1') : '', mode === 'versus' && selFor === 'p2' ? ROSTER.indexOf(player) : -1, openCount(), hot, pickFighter); break;
     case 'settings': drawSettings(t, setSel, settings, confirmReset, hot, changeSetting); break;
     case 'controls': input.drawEditor(t, hot, () => go('settings')); break;
     case 'lab': drawLab(t, echoInfo(), hot, labFight); break;
@@ -395,7 +406,7 @@ function frame(ms: number) {
     case 'twist': story.drawTwist(t, player); break;
     case 'archive': story.drawArchive(t); break;
     case 'choice': story.drawChoice(t, choice, hot, pickEnding); break;
-    case 'ending': hot(0, 0, A.W, A.H, () => { if (now - screenT0 > 5) go('menu'); }); story.drawEnding(t, choice, player); break;
+    case 'ending': hot(0, 0, A.W, A.H, () => { if (now - screenT0 > 5) go('menu'); }); story.drawEnding(t, choice, player, newUnlock); break;
     case 'fallen': hot(0, 0, A.W, A.H, enterFloor); story.drawFallen(t, f?.fl ?? 0, !!f?.echo); break;
     case 'train':
       if (!trainer) break;

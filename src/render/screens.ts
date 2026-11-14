@@ -209,7 +209,7 @@ export const CARDS = [
   { look: 'glitch', n: 'GLITCH', w: 'STOLEN ARSENAL', pw: 'DESYNC', d: 'CTRL Z', col: '#ff2fa0', weapon: 'glitch', ver: 3, bulk: 0 },
 ];
 
-export function drawSelect(t: number, sel: number, who: string, taken: number, hot: Hot, pick: (i: number) => void) {
+export function drawSelect(t: number, sel: number, who: string, taken: number, open: number, hot: Hot, pick: (i: number) => void) {
   const x = A.x;
   x.fillStyle = '#05060a'; x.fillRect(0, 0, W, H);
   x.strokeStyle = 'rgba(41,240,255,.07)'; x.lineWidth = 1;
@@ -219,7 +219,7 @@ export function drawSelect(t: number, sel: number, who: string, taken: number, h
   A.text('8 FIGHTERS  //  8 WEAPONS  //  8 DELETIONS', W / 2, 106, 17, '#29f0ff', A.MONO, 'bold', 'center', 1, 4);
   const cw = 142, gap = 9, x0 = (W - (cw * 8 + gap * 7)) / 2, cy = 140, ch = 400;
   CARDS.forEach((r, i) => {
-    const appear = A.eOut(A.seg(t, i * 0.06, 0.4 + i * 0.06)), on = i === sel, cx = x0 + i * (cw + gap), locked = r.ver > 1;
+    const appear = A.eOut(A.seg(t, i * 0.06, 0.4 + i * 0.06)), on = i === sel, cx = x0 + i * (cw + gap), locked = i >= open;
     hot(cx, cy, cw, ch, () => pick(i));
     x.save(); x.globalAlpha = appear; x.translate(0, (1 - appear) * 40);
     const g = x.createLinearGradient(0, cy, 0, cy + ch); g.addColorStop(0, on ? r.col + '55' : '#11141c'); g.addColorStop(1, '#07080c');
@@ -230,7 +230,7 @@ export function drawSelect(t: number, sel: number, who: string, taken: number, h
     x.restore();
     x.save(); x.strokeStyle = on ? r.col : 'rgba(255,255,255,.18)'; x.lineWidth = on ? 3 : 1; if (on) A.glow(r.col, 20); x.strokeRect(cx, cy, cw, ch); x.restore();
     if (taken === i) A.text('P1', cx + 14, cy + 18, 13, '#fff', A.MONO, 'bold', 'left', 1, 2);
-    if (locked) { x.fillStyle = 'rgba(0,0,0,.6)'; x.fillRect(cx, cy + 14, cw, 26); A.text(`LOCKED // V${r.ver}`, cx + cw / 2, cy + 27, 11, '#7d8590', A.MONO, 'bold', 'center', 1, 2); }
+    if (locked) { x.fillStyle = 'rgba(0,0,0,.6)'; x.fillRect(cx, cy + 14, cw, 26); A.text(i === open ? 'NEXT UNLOCK' : 'LOCKED', cx + cw / 2, cy + 27, 11, i === open ? '#ffb15a' : '#7d8590', A.MONO, 'bold', 'center', 1, 2); }
     x.fillStyle = 'rgba(0,0,0,.75)'; x.fillRect(cx, cy + ch - 72, cw, 72);
     A.text(r.n, cx + cw / 2, cy + ch - 50, r.n.length > 6 ? 22 : 26, on ? '#fff' : '#9aa0aa', A.HEAVY, '900');
     A.text(r.w, cx + cw / 2, cy + ch - 22, 10.5, on ? r.col : '#6c717a', A.COND, 'bold');
@@ -245,8 +245,9 @@ export function drawSelect(t: number, sel: number, who: string, taken: number, h
     A.text(lab, xx, 600, 13, '#7d8590', A.MONO, 'bold', 'left', 1, 3);
     A.text(v, xx, 630, 19, '#fff', A.COND, 'bold', 'left');
   });
-  const playable = ROSTER[sel];
-  A.text(playable ? FIGHTERS[playable].moveList : `COMING IN VERSION ${r.ver}`, 470, 664, 11, playable ? r.col : '#7d8590', A.MONO, 'bold', 'left');
+  const playable = sel < open ? ROSTER[sel] : null;
+  const left = sel - open + 1;
+  A.text(playable ? FIGHTERS[playable].moveList : `BEAT THE SPIRE ${left === 1 ? 'ONCE MORE' : left + ' MORE TIMES'} TO UNLOCK`, 470, 664, 11, playable ? r.col : '#ffb15a', A.MONO, 'bold', 'left', 1, playable ? 0 : 2);
   A.text((touchMode ? 'TAP A FIGHTER' : 'A / D  BROWSE     ENTER  FIGHT     ESC  BACK'), W / 2, 706, 12, '#5c636b', A.MONO, 'bold', 'center', 1, 4);
   A.post(t);
 }

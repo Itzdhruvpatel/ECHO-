@@ -38,7 +38,104 @@ export function fxEvents(ev: SimEvent[], s: Sim, t: number) {
     shake = Math.max(shake, (e.type === 'block' ? 4 : 12) * e.pow);
     if (e.type === 'ko') { flash = 1; koCam = { x: e.x, y: GY - e.y, t }; }
     if ((e.combo ?? 0) >= 2) combo = { n: e.combo!, who: e.who, t };
+    if (e.name) tag = { text: e.name, x: e.x, y: GY - e.y - 60, t, col: e.type === 'block' ? '#bff6ff' : '#ffffff' };
   }
+}
+
+let tag = { text: '', x: 0, y: 0, t: -9, col: '#fff' };
+function tagText(t: number) {
+  const age = t - tag.t;
+  if (age > 0.9) return;
+  A.x.save(); A.x.globalAlpha = 1 - A.seg(age, 0.6, 0.9);
+  A.glitchText(tag.text, tag.x, tag.y - age * 40, 30, t, tag.col, '900', A.HEAVY, 0.4);
+  A.x.restore();
+}
+
+// Each later fighter's signature effect, used by their powers, Overclock, Last Breath and Deletion.
+function signature(id: string, cx: number, cy: number, t: number, k: number) {
+  const x = A.x, r = A.rng(Math.floor(t * 24) + 7);
+  x.save(); x.globalCompositeOperation = 'lighter';
+  if (id === 'ion') {
+    // lightning bolts striking down at the target
+    A.glow('#ffe14d', 18);
+    for (let b = 0; b < 3; b++) {
+      x.strokeStyle = b ? '#ffe14d' : '#ffffff'; x.lineWidth = 2 + r() * 3; x.globalAlpha = k;
+      let px = cx + (r() - 0.5) * 200, py = 0;
+      x.beginPath(); x.moveTo(px, py);
+      while (py < cy) { py += 30 + r() * 40; px += (cx - px) * 0.3 + (r() - 0.5) * 50; x.lineTo(px, Math.min(py, cy)); }
+      x.stroke();
+    }
+  } else if (id === 'bhairav') {
+    // a pillar of blue fire and the target's memories burning around them
+    const g = x.createLinearGradient(cx, cy + 120, cx, cy - 260);
+    g.addColorStop(0, `rgba(77,124,255,${0.7 * k})`); g.addColorStop(0.5, `rgba(255,140,40,${0.5 * k})`); g.addColorStop(1, 'rgba(255,60,0,0)');
+    x.fillStyle = g; x.beginPath(); x.moveTo(cx - 70, cy + 120); x.quadraticCurveTo(cx - 20 + Math.sin(t * 9) * 20, cy - 80, cx, cy - 260); x.quadraticCurveTo(cx + 20 + Math.cos(t * 7) * 20, cy - 80, cx + 70, cy + 120); x.fill();
+    for (let i = 0; i < 6; i++) {
+      const a = t * 0.8 + i * 1.05, px = cx + Math.cos(a) * 150, py = cy - 60 + Math.sin(a) * 60, burn = k * ((t + i * 0.3) % 1);
+      x.globalAlpha = k * (0.5 + 0.5 * Math.sin(t * 5 + i)); x.strokeStyle = '#ffb15a'; x.lineWidth = 2; x.strokeRect(px - 22, py - 16, 44, 32);
+      x.fillStyle = 'rgba(255,90,30,.35)'; x.fillRect(px - 22, py + 16 - 32 * burn, 44, 32 * burn);
+    }
+  } else if (id === 'mirae') {
+    // glass shards circling the target
+    for (let i = 0; i < 14; i++) {
+      const a = t * 2.4 + i * 0.45, rad = 90 + 60 * Math.sin(t * 2 + i), sz = 8 + (i % 4) * 4;
+      x.save(); x.translate(cx + Math.cos(a) * rad, cy - 40 + Math.sin(a) * rad * 0.7); x.rotate(a * 2); x.globalAlpha = k;
+      x.fillStyle = i % 3 ? 'rgba(191,246,255,.8)' : '#ffffff'; x.beginPath(); x.moveTo(0, -sz); x.lineTo(sz * 0.6, sz); x.lineTo(-sz * 0.6, sz * 0.4); x.fill(); x.restore();
+    }
+  } else if (id === 'sora') {
+    // a tornado wrapped around the target
+    A.glow('#5dff9a', 12);
+    for (let i = 0; i < 12; i++) {
+      const yy = cy + 100 - i * 32, w = 40 + i * 14, rot = t * (6 + i * 0.3);
+      x.strokeStyle = `rgba(93,255,154,${k * (0.3 + 0.05 * i)})`; x.lineWidth = 3;
+      x.beginPath(); x.ellipse(cx + Math.sin(t * 3 + i * 0.4) * 12, yy, w, w * 0.22, 0, rot, rot + 4.2); x.stroke();
+    }
+  } else if (id === 'glitch') {
+    // corrupted blocks and tear lines
+    for (let i = 0; i < 18; i++) {
+      x.globalAlpha = k * r();
+      x.fillStyle = r() > 0.5 ? '#ff2fa0' : '#29f0ff';
+      x.fillRect(cx + (r() - 0.5) * 260, cy - 160 + r() * 280, 8 + r() * 50, 4 + r() * 14);
+    }
+    x.globalAlpha = 0.4 * k; x.fillStyle = '#ffffff';
+    for (let i = 0; i < 3; i++) x.fillRect(0, cy - 150 + r() * 260, W, 2);
+  }
+  x.restore();
+}
+
+// Auras while a later fighter's super power is active.
+function auras(s: Sim, i: number, t: number) {
+  const f = s.f[i], cx = f.x, cy = GY - f.y - 120, x = A.x;
+  if (f.charge > 0) {
+    // Overcharge: crackling lightning around the body
+    const r = A.rng(Math.floor(t * 30) + i);
+    x.save(); x.globalCompositeOperation = 'lighter'; A.glow('#ffe14d', 14); x.strokeStyle = '#ffe14d'; x.lineWidth = 2;
+    for (let b = 0; b < 4; b++) {
+      const a = r() * 6.283; x.beginPath(); x.moveTo(cx + Math.cos(a) * 30, cy + Math.sin(a) * 90);
+      for (let j = 1; j < 5; j++) x.lineTo(cx + Math.cos(a) * (30 + j * 14) + (r() - 0.5) * 20, cy + Math.sin(a) * (90 + j * 8) + (r() - 0.5) * 20);
+      x.stroke();
+    }
+    x.restore();
+  }
+  if (f.foresight > 0) {
+    // Third Eye: a glowing eye over the head
+    x.save(); A.glow('#4dd2ff', 24); x.fillStyle = `rgba(77,210,255,${0.6 + 0.4 * Math.sin(t * 8)})`;
+    x.beginPath(); x.ellipse(cx, GY - f.y - 300, 22, 9, 0, 0, 7); x.fill();
+    x.fillStyle = '#ffffff'; x.beginPath(); x.arc(cx, GY - f.y - 300, 5, 0, 7); x.fill(); x.restore();
+  }
+  if (f.decoy > 0) {
+    // Reflection: a glass copy standing behind her
+    x.save(); x.globalAlpha = 0.3; x.globalCompositeOperation = 'lighter';
+    A.drawFighter({ x: cx - f.facing * 70, y: GY, air: f.y, f: f.facing, s: SCALE, p: A.POSE.block, look: f.id, dim: true }, t);
+    x.restore();
+  }
+  if (f.updraft > 0) {
+    // Updraft: wind curling under the feet
+    x.save(); x.strokeStyle = 'rgba(93,255,154,.6)'; x.lineWidth = 2;
+    for (let j = 0; j < 3; j++) { const a0 = t * 8 + j * 2; x.beginPath(); x.ellipse(cx, GY - f.y + 4 - j * 12, 60 - j * 10, 10, 0, a0, a0 + 4); x.stroke(); }
+    x.restore();
+  }
+  if (f.id === 'glitch' && f.invuln > 0) signature('glitch', cx, cy, t, 0.6);
 }
 
 function comboText(t: number) {
@@ -139,6 +236,7 @@ function drawOne(s: Sim, i: number, t: number) {
   A.drawFighter({ x: f.x, y: GY, air: dazed ? 0 : f.y, f: f.facing, s: SCALE, p, whip, ...skin(s, i) }, t);
   x.restore();
   if (f.armor > 0) ironWill(f, t);
+  auras(s, i, t);
 }
 
 // ---------- power and Overclock effects ----------
@@ -200,6 +298,24 @@ function overclockFx(s: Sim, t: number) {
     if (f.state !== 'attack' || f.move !== FIGHTERS[f.id].overclock) return;
     const m = MOVES[f.move], o = s.f[1 - i], live = f.frame > m.startup && f.frame <= m.startup + m.active;
     if (f.id === 'kaal') coils(f.x + f.facing * 20, 520, t, live ? 1 : 0.4);
+    if (live && ['ion', 'bhairav', 'mirae', 'sora'].includes(f.id)) signature(f.id, f.id === 'bhairav' ? f.x : o.x, GY - 120, t, 1);
+    if (f.id === 'mirae' && live) {
+      // Hall of Mirrors: glass copies strike from every side
+      for (let c = 0; c < 6; c++) {
+        const a = c * 1.05 + t, px = o.x + Math.cos(a) * 170;
+        A.x.save(); A.x.globalAlpha = 0.35;
+        A.drawFighter({ x: px, y: GY, f: px < o.x ? 1 : -1, s: SCALE, p: A.POSE.whip, look: 'mirae', weapon: 'katana', wcol: '#bff6ff', dim: true }, t);
+        A.x.restore();
+      }
+    }
+    if (f.id === 'glitch' && live) {
+      // Blue Screen: the whole fight crashes, every frozen frame is another hit
+      A.x.save(); A.x.fillStyle = 'rgba(10,60,200,.55)'; A.x.fillRect(0, 0, W, H); A.x.restore();
+      A.text(':(', 120, 200, 90, '#ffffff', A.COND, 'bold', 'left');
+      A.text('YOUR FIGHTER RAN INTO A PROBLEM AND NEEDS TO RESTART', 120, 300, 20, '#ffffff', A.MONO, 'bold', 'left');
+      A.text(`${Math.min(100, Math.round(((f.frame - m.startup) / m.active) * 100))}% COMPLETE`, 120, 340, 18, '#ffffff', A.MONO, 'bold', 'left');
+      signature('glitch', o.x, GY - 120, t, 1);
+    }
     if (f.id === 'vanta' && live) {
       const x = A.x, r = A.rng(Math.floor(t * 30));
       x.save(); x.fillStyle = 'rgba(0,0,0,.72)'; x.fillRect(0, 0, W, H);
@@ -283,6 +399,16 @@ function lastBreathScene(s: Sim, t: number) {
       if (dt > 1.3) { lx = A.lerp(640, 380, A.eOut(k)); ly = Math.sin(k * Math.PI) * 120; lp = k > 0.9 ? P.stag : P.hit; }
       if (dt > 1.3 && dt < 1.45) { shake = Math.max(shake, 16); A.sparks(700, GY - 140, dt - 1.3, 41, '#a45cff', 30, 1.4); }
     }
+  } else if (w.id !== 'rook') {
+    // launched high, struck with the fighter's signature, slammed back down
+    if (dt < 0.35) { wp = A.mixPose(P.idle, P.raise, dt / 0.35); lx = 760; }
+    else if (dt < 1.1) { const k = (dt - 0.35) / 0.75; wp = P.raise; lx = 760; ly = Math.sin(k * Math.PI * 0.5) * 300; signature(w.id, lx, GY - 120 - ly, t, 1); }
+    else if (dt < 1.3) { wp = P.whip; lx = 760; ly = 300 * (1 - (dt - 1.1) / 0.2); }
+    else {
+      wp = P.whip; lx = 760; lp = P.stag;
+      if (dt < 1.45) { shake = Math.max(shake, 22); A.sparks(lx, GY - 30, dt - 1.3, 91, FIGHTERS[w.id].color, 34, 1.6); }
+      signature(w.id, lx, GY - 80, t, 1 - A.seg(dt, 1.3, 2.6));
+    }
   } else {
     // buried to the knees, then launched into the wall
     if (dt < 0.5) { wp = A.mixPose(P.idle, P.raise, dt / 0.5); lx = 680; }
@@ -333,6 +459,13 @@ function deletionScene(s: Sim, t: number) {
       A.drawFighter({ x: l.x, y: GY + 60 * k * k, f: l.facing, s: SCALE, p: P.stag, look: ls.look, dim: true }, t);
       x.restore();
       puff(l.x, GY - 60, (dt % 0.6));
+    } else if (w.id !== 'rook') {
+      // the fighter's signature builds around the loser until they break
+      signature(w.id, l.x, GY - 120, t, Math.min(1, k * 1.5));
+      x.save(); x.globalAlpha = 1 - k * 0.5;
+      const jitter = (Math.random() - 0.5) * 10 * k;
+      A.drawFighter({ x: l.x + jitter, y: GY - (w.id === 'sora' ? k * 220 : 0), f: l.facing, s: SCALE, p: A.mixPose(P.stag, P.hit, (Math.sin(t * 20) + 1) * 0.3 * k), look: ls.look, dim: w.id === 'mirae' || w.id === 'glitch' }, t);
+      x.restore();
     } else {
       // hammered into the floor like a nail
       const hits = Math.floor(dt / 0.4), sink = Math.min(4, hits) * 38 + (dt % 0.4 < 0.08 ? 10 : 0);
@@ -503,7 +636,7 @@ export function drawFight(s: Sim, t: number, v: FightView = {}) {
     if (debug) debugBoxes(s);
   }
   x.restore();
-  if (s.phase !== 'deletion') comboText(t);
+  if (s.phase !== 'deletion') { comboText(t); tagText(t); }
   if (s.hitstop > 0) { x.fillStyle = 'rgba(255,255,255,.07)'; x.fillRect(0, 0, W, H); }
   if (flash > 0) { x.fillStyle = `rgba(255,255,255,${flash * 0.6})`; x.fillRect(0, 0, W, H); flash -= 0.04; }
   if (s.phase !== 'deletion') { hud(s); archiveRec(t); modelPanel(t); callout(s); tauntBubble(s, t); }

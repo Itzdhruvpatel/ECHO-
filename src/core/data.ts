@@ -108,42 +108,42 @@ export interface FighterData {
 
 export const FIGHTERS: Record<FighterId, FighterData> = {
   kaal: {
-    name: 'KAAL', hp: 1000, dmgScale: 1, walk: 4.2, dash: 12, special: 'coil', overclock: 'oc_coils', deletion: "KAAL'S LOOP", lastBreath: 'MONSOON CUT', weapon: 'urumi', color: '#ff8a1f', weaponName: 'URUMI WHIP SWORD', power: 'REWIND', style: 'BALANCED, LONG REACH',
+    name: 'KAAL', hp: 1000, dmgScale: 0.95, walk: 4.2, dash: 12, special: 'coil', overclock: 'oc_coils', deletion: "KAAL'S LOOP", lastBreath: 'MONSOON CUT', weapon: 'urumi', color: '#ff8a1f', weaponName: 'URUMI WHIP SWORD', power: 'REWIND', style: 'BALANCED, LONG REACH',
     chains: { fp: { FP: 'fp2' }, fp2: { BP: 'k_monsoon' }, fk: { BK: 'k_undertow' } },
     moveList: 'U U I  RIPTIDE  //  J K  UNDERTOW  //  O  COIL LASH  //  P  REWIND  //  ;  THOUSAND COILS',
   },
   vanta: {
-    name: 'VANTA', hp: 900, dmgScale: 0.95, walk: 5.4, dash: 15, special: 'lunge', overclock: 'oc_nightshift', deletion: 'FACELESS', lastBreath: 'CROSS OUT', weapon: 'kukri', color: '#a45cff', weaponName: 'TWIN KUKRIS', power: 'SHADOW PHASE', style: 'RUSHDOWN',
+    name: 'VANTA', hp: 900, dmgScale: 1.0, walk: 5.4, dash: 15, special: 'lunge', overclock: 'oc_nightshift', deletion: 'FACELESS', lastBreath: 'CROSS OUT', weapon: 'kukri', color: '#a45cff', weaponName: 'TWIN KUKRIS', power: 'SHADOW PHASE', style: 'RUSHDOWN',
     chains: { fp: { BP: 'bp' }, bp: { FK: 'v_flurry', BP: 'v_nightcut' } },
     moveList: 'U I J  SHADE FLURRY  //  I I  NIGHT CUT  //  O  SHADOW LUNGE  //  P  SHADOW PHASE  //  ;  NIGHT SHIFT',
   },
   rook: {
-    name: 'ROOK', hp: 1250, dmgScale: 1.25, walk: 3.9, dash: 11, special: 'slam', overclock: 'oc_demolition', deletion: 'FOUNDATION', lastBreath: 'PILE DRIVER', weapon: 'hammer', color: '#ff4d2e', weaponName: 'HYDRAULIC HAMMER', power: 'IRON WILL', style: 'HEAVY GRAPPLER',
+    name: 'ROOK', hp: 1250, dmgScale: 1.1, walk: 3.9, dash: 11, special: 'slam', overclock: 'oc_demolition', deletion: 'FOUNDATION', lastBreath: 'PILE DRIVER', weapon: 'hammer', color: '#ff4d2e', weaponName: 'HYDRAULIC HAMMER', power: 'IRON WILL', style: 'HEAVY GRAPPLER',
     chains: { bp: { FP: 'r_piledriver' }, fk: { FK: 'r_breakwater' } },
     moveList: 'I U  WRECKING BALL  //  J J  BREAKWATER  //  O  GROUND BREAKER  //  P  IRON WILL  //  ;  DEMOLITION ORDER',
   },
   ion: {
-    name: 'ION', hp: 950, dmgScale: 1, walk: 4.8, dash: 14, special: 'arc', overclock: 'oc_redline', deletion: 'FULL THROTTLE', lastBreath: 'GROUND WIRE', weapon: 'sickle', color: '#ffe14d', weaponName: 'ELECTRIC CHAIN SICKLE', power: 'OVERCHARGE', style: 'ZONER, PULLS YOU IN',
+    name: 'ION', hp: 1000, dmgScale: 1.1, walk: 4.8, dash: 14, special: 'arc', overclock: 'oc_redline', deletion: 'FULL THROTTLE', lastBreath: 'GROUND WIRE', weapon: 'sickle', color: '#ffe14d', weaponName: 'ELECTRIC CHAIN SICKLE', power: 'OVERCHARGE', style: 'ZONER, PULLS YOU IN',
     chains: { fp: { FK: 'i_spark' }, fk: { BP: 'i_burnout' } },
     moveList: 'U J  SPARK PLUG  //  J I  BURNOUT  //  O  ARC CHAIN  //  P  OVERCHARGE  //  ;  REDLINE',
   },
   bhairav: {
-    name: 'BHAIRAV', hp: 1200, dmgScale: 1.2, walk: 3.4, dash: 9, special: 'titanfall', overclock: 'oc_tandava', deletion: 'BURN THE ARCHIVE', lastBreath: 'PINNED', weapon: 'trident', color: '#4d7cff', weaponName: 'FIRE TRIDENT', power: 'THIRD EYE', style: 'SLOW, HUGE DAMAGE',
+    name: 'BHAIRAV', hp: 1100, dmgScale: 1.05, walk: 3.4, dash: 9, special: 'titanfall', overclock: 'oc_tandava', deletion: 'BURN THE ARCHIVE', lastBreath: 'PINNED', weapon: 'trident', color: '#4d7cff', weaponName: 'FIRE TRIDENT', power: 'THIRD EYE', style: 'SLOW, HUGE DAMAGE',
     chains: { bp: { BP: 'b_pyre' }, bk: { BK: 'b_ember' } },
     moveList: 'I I  PYRE  //  K K  EMBER SWEEP  //  O  TITAN FALL  //  P  THIRD EYE  //  ;  TANDAVA',
   },
   mirae: {
-    name: 'MIRAE', hp: 950, dmgScale: 1, walk: 4.6, dash: 13, special: 'shatter', overclock: 'oc_mirrors', deletion: 'GLASS COFFIN', lastBreath: 'SHATTERPOINT', weapon: 'katana', color: '#bff6ff', weaponName: 'GLASS KATANA', power: 'REFLECTION', style: 'COUNTER AND PARRY',
+    name: 'MIRAE', hp: 1000, dmgScale: 1.1, walk: 4.6, dash: 13, special: 'shatter', overclock: 'oc_mirrors', deletion: 'GLASS COFFIN', lastBreath: 'SHATTERPOINT', weapon: 'katana', color: '#bff6ff', weaponName: 'GLASS KATANA', power: 'REFLECTION', style: 'COUNTER AND PARRY',
     chains: { fp: { BP: 'm_glint' }, fk: { BK: 'm_facet' } },
     moveList: 'U I  GLINT  //  J K  FACET CUT  //  O  SHATTER GUARD  //  P  REFLECTION  //  ;  HALL OF MIRRORS',
   },
   sora: {
-    name: 'SORA', hp: 900, dmgScale: 1, walk: 5, dash: 14, special: 'cyclone', overclock: 'oc_cyclonedance', deletion: 'EYE OF THE STORM', lastBreath: 'MONSOON FALL', weapon: 'fans', color: '#5dff9a', weaponName: 'STEEL WAR FANS', power: 'UPDRAFT', style: 'AERIAL',
+    name: 'SORA', hp: 1050, dmgScale: 1.3, walk: 5, dash: 14, special: 'cyclone', overclock: 'oc_cyclonedance', deletion: 'EYE OF THE STORM', lastBreath: 'MONSOON FALL', weapon: 'fans', color: '#5dff9a', weaponName: 'STEEL WAR FANS', power: 'UPDRAFT', style: 'AERIAL',
     chains: { fk: { FK: 's_gust' }, fp: { FP: 's_tailwind' } },
     moveList: 'J J  GUST  //  U U  TAILWIND  //  O  CYCLONE  //  P  UPDRAFT  //  ;  CYCLONE DANCE',
   },
   glitch: {
-    name: 'GLITCH', hp: 950, dmgScale: 1, walk: 4.8, dash: 16, special: 'coil', overclock: 'oc_bluescreen', deletion: 'CTRL Z', lastBreath: 'BUFFER OVERFLOW', weapon: 'glitch', color: '#ff2fa0', weaponName: 'STOLEN ARSENAL', power: 'DESYNC', style: 'WILDCARD',
+    name: 'GLITCH', hp: 1000, dmgScale: 1.12, walk: 4.8, dash: 16, special: 'coil', overclock: 'oc_bluescreen', deletion: 'CTRL Z', lastBreath: 'BUFFER OVERFLOW', weapon: 'glitch', color: '#ff2fa0', weaponName: 'STOLEN ARSENAL', power: 'DESYNC', style: 'WILDCARD',
     chains: { bp: { FP: 'g_lag' }, fk: { BK: 'g_crash' } },
     moveList: 'I U  LAG SPIKE  //  J K  CRASH REPORT  //  O  COPY PASTE (STOLEN EACH ROUND)  //  P  DESYNC  //  ;  BLUE SCREEN',
   },

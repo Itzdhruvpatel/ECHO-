@@ -56,8 +56,13 @@ Arcade Tower takes you up five floors: 12, 37, 61, 88 and 99. Each CPU reacts fa
 | Kaal | Urumi whip sword | Rewind: jump back one second and recover the health lost in it | Thousand Coils | Monsoon Cut | Kaal's Loop |
 | Vanta | Twin kukris | Shadow Phase: reappear behind the opponent | Night Shift | Cross Out | Faceless |
 | Rook | Hydraulic hammer | Iron Will: three seconds of armor that turns damage into meter | Demolition Order | Pile Driver | Foundation |
+| Ion | Electric chain sickle | Overcharge: faster walk and harder hits for six seconds | Redline | Ground Wire | Full Throttle |
+| Bhairav | Fire trident | Third Eye: reads and blocks the next attack | Tandava | Pinned | Burn the Archive |
+| Mirae | Glass katana | Reflection: a glass decoy takes the next hit | Hall of Mirrors | Shatterpoint | Glass Coffin |
+| Sora | Steel war fans | Updraft: floaty, higher jumps | Cyclone Dance | Monsoon Fall | Eye of the Storm |
+| Glitch | Stolen arsenal | Desync: skips back and phases through attacks | Blue Screen | Buffer Overflow | Ctrl Z |
 
-Every fighter also has two strings, a special and a Deletion. The fighter select screen lists the inputs.
+Every fighter also has two strings and a special; the fighter select screen lists the inputs. Kaal, Vanta and Rook are open from the start. Each Spire clear unlocks the next: Ion, Bhairav, Mirae, Sora, then Glitch, whose special changes every round.
 
 ## How the Echo works
 
